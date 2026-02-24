@@ -43,44 +43,11 @@ function Hero() {
   );
 }
 
-// Divider between the traditional problem section and the LCM solution section
-function TransitionDivider() {
-  return (
-    <div
-      className="flex flex-col items-center justify-center text-center"
-      style={{ minHeight: '60vh', padding: '4rem 2rem' }}
-    >
-      <div style={{ borderColor: 'var(--color-border)' }} className="w-px h-16 border-l mb-8" />
-      <span
-        style={{ color: 'var(--color-summary)', borderColor: 'var(--color-summary)' }}
-        className="rounded border px-3 py-1 text-xs font-bold tracking-widest mb-6"
-      >
-        ENTER LCM
-      </span>
-      <h2
-        style={{ color: 'var(--color-text)' }}
-        className="text-3xl font-bold m-0 mb-4"
-      >
-        There's a better way.
-      </h2>
-      <p
-        style={{ color: 'var(--color-muted)', lineHeight: '1.7' }}
-        className="text-sm max-w-lg m-0"
-      >
-        LCM starts the same way — a conversation accumulating messages — but instead
-        of truncating, it compacts them into layered summaries where nothing is ever lost.
-      </p>
-      <div style={{ borderColor: 'var(--color-border)' }} className="w-px h-16 border-l mt-8" />
-    </div>
-  );
-}
-
 export default function App() {
   return (
     <main>
       <Hero />
       <TraditionalScene />
-      <TransitionDivider />
       <CompactionScene />
       <AgentationOverlay />
     </main>

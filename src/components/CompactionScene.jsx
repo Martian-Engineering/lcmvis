@@ -29,8 +29,8 @@ gsap.registerPlugin(ScrollTrigger);
 // Indices 0–8 are the compaction act; 9–11 are condensation; 12–16 are tool demos.
 const STEPS = [
   {
-    title: 'Same Conversation, Different Strategy',
-    body: 'Same context window, same token budget — but LCM manages it differently. Watch what happens as messages accumulate.',
+    title: 'There\'s a better way.',
+    body: 'LCM starts the same way — a conversation accumulating messages — but instead of truncating, it compacts them into layered summaries where nothing is ever lost.',
   },
   {
     title: 'Messages Arrive',
@@ -471,17 +471,37 @@ export default function CompactionScene() {
       {/* ── Left: scrollable narration ──────────────────────────────────── */}
       <div className="flex flex-col" style={{ width: '45%' }}>
 
-        {/* Sections 0–8 */}
-        {STEPS.slice(0, 9).map((s, i) => (
-          <div
-            key={i}
-            ref={(el) => { narrationRefs.current[i] = el; }}
-            className="flex items-center"
-            style={{ minHeight: i === 0 ? '100vh' : '80vh', padding: '0 3.5rem' }}
-          >
-            <Narration title={s.title} body={s.body} step={i} totalSteps={TOTAL_STEPS} />
+        {/* Section 0 — transition from Traditional to LCM */}
+        <div
+          ref={(el) => { narrationRefs.current[0] = el; }}
+          className="flex items-center"
+          style={{ minHeight: '100vh', padding: '0 3.5rem' }}
+        >
+          <div className="flex flex-col gap-4">
+            <span
+              style={{ color: 'var(--color-summary)', borderColor: 'var(--color-summary)' }}
+              className="self-start rounded border px-2 py-0.5 text-[10px] font-bold tracking-widest"
+            >
+              ENTER LCM
+            </span>
+            <Narration title={STEPS[0].title} body={STEPS[0].body} step={0} totalSteps={TOTAL_STEPS} />
           </div>
-        ))}
+        </div>
+
+        {/* Sections 1–8 */}
+        {STEPS.slice(1, 9).map((s, i) => {
+          const idx = i + 1;
+          return (
+            <div
+              key={idx}
+              ref={(el) => { narrationRefs.current[idx] = el; }}
+              className="flex items-center"
+              style={{ minHeight: '80vh', padding: '0 3.5rem' }}
+            >
+              <Narration title={s.title} body={s.body} step={idx} totalSteps={TOTAL_STEPS} />
+            </div>
+          );
+        })}
 
         {/* Fast-forward scrub section */}
         <div
