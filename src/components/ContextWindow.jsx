@@ -14,7 +14,7 @@ import FreshTailPlaceholder from './FreshTailPlaceholder';
 import TokenBudget from './TokenBudget';
 import { TOTAL_BUDGET, FRESH_TAIL_COUNT } from '../data/conversation';
 
-const ContextWindow = forwardRef(function ContextWindow({ items, usedTokens, fastForward }, ref) {
+const ContextWindow = forwardRef(function ContextWindow({ items, usedTokens, fastForward, showFreshTail = true }, ref) {
   const itemRefs  = useRef({});
   const scrollRef = useRef(null);
 
@@ -29,9 +29,9 @@ const ContextWindow = forwardRef(function ContextWindow({ items, usedTokens, fas
     el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, [items]);
 
-  // Fresh tail: last FRESH_TAIL_COUNT raw messages
+  // Fresh tail: last FRESH_TAIL_COUNT raw messages (only marked when visible)
   const rawIds = items.filter((i) => i.type === 'message').map((i) => i.data.id);
-  const freshIds = new Set(rawIds.slice(-FRESH_TAIL_COUNT));
+  const freshIds = showFreshTail ? new Set(rawIds.slice(-FRESH_TAIL_COUNT)) : new Set();
 
   return (
     <div
@@ -104,9 +104,16 @@ const ContextWindow = forwardRef(function ContextWindow({ items, usedTokens, fas
         })}
       </div>
 
-      {/* Legend */}
+      {/* Fresh tail legend — animates in when showFreshTail becomes true */}
       <div
-        style={{ borderColor: 'var(--color-border)', color: 'var(--color-muted)' }}
+        style={{
+          borderColor: 'var(--color-border)',
+          color: 'var(--color-muted)',
+          maxHeight: showFreshTail ? '40px' : 0,
+          opacity: showFreshTail ? 1 : 0,
+          overflow: 'hidden',
+          transition: 'max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease',
+        }}
         className="border-t pt-2 shrink-0 text-[10px] flex items-center gap-1.5"
       >
         <span style={{ color: 'var(--color-fresh)' }}>●</span>

@@ -561,6 +561,7 @@ export default function CompactionScene() {
             items={items}
             usedTokens={usedTokens}
             fastForward={fastForward}
+            showFreshTail={step >= 3 || fastForward}
           />
         </div>
 

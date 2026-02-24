@@ -227,8 +227,8 @@ export default function TraditionalScene() {
       if (!el) return null;
       return ScrollTrigger.create({
         trigger:     el,
-        start:       'top 55%',
-        end:         'bottom 45%',
+        start:       'top 38%',
+        end:         'bottom 38%',
         onEnter:     () => applyStep(i),
         onEnterBack: () => applyStep(i),
       });
