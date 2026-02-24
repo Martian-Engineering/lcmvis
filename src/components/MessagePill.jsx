@@ -53,7 +53,7 @@ const MessagePill = forwardRef(function MessagePill({ message, isFresh, dim }, r
           style={{ color: 'var(--color-fresh)', borderColor: 'var(--color-fresh)' }}
           className="mt-0.5 shrink-0 rounded border px-1 py-0.5 text-[9px] font-semibold"
         >
-          FRESH
+          FRESH TAIL
         </span>
       )}
     </div>

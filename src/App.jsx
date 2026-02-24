@@ -68,7 +68,7 @@ function TransitionDivider() {
         className="text-sm max-w-lg m-0"
       >
         LCM starts the same way — a conversation accumulating messages — but instead
-        of truncating, it compacts them into a lossless hierarchical summary DAG.
+        of truncating, it compacts them into layered summaries where nothing is ever lost.
       </p>
       <div style={{ borderColor: 'var(--color-border)' }} className="w-px h-16 border-l mt-8" />
     </div>

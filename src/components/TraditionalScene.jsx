@@ -51,7 +51,7 @@ const STEPS = [
   },
   {
     title: 'The Threshold',
-    body: 'When context usage crosses a threshold — typically around 80% of the budget — the system fires a summarization call. All messages so far are sent to the model in one batch. This call typically takes 1–2 minutes to complete.',
+    body: 'When context usage crosses a threshold — typically around 80% of the budget — the system fires a summarization call. As many messages as possible are sent to the model in one batch for summarization. This call typically takes 1–2 minutes to complete.',
   },
   {
     title: 'One Flat Summary',
@@ -323,7 +323,7 @@ export default function TraditionalScene() {
           <div className="shrink-0 flex items-center gap-1.5" style={{ marginTop: '-6px' }}>
             <div style={{ width: `${(TRAD_THRESHOLD / TRAD_BUDGET) * 100}%` }} />
             <span style={{ color: 'var(--color-muted)' }} className="text-[9px]">
-              ↑ summarization threshold ({Math.round(TRAD_THRESHOLD / TRAD_BUDGET * 100)}%)
+              ↑ threshold ({Math.round(TRAD_THRESHOLD / TRAD_BUDGET * 100)}%)
             </span>
           </div>
 

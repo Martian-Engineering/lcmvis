@@ -42,15 +42,15 @@ const STEPS = [
   },
   {
     title: 'The Fresh Tail',
-    body: 'LCM always protects the most recent raw messages — the "fresh tail." These are never compacted. Everything older is eligible for summarization.',
+    body: 'LCM always protects the most recent raw messages — the "fresh tail." These are never compacted. Everything older is eligible for summarization. In this simplified example the fresh tail is 4 messages; in real-world use it would be much larger.',
   },
   {
     title: 'Compaction Triggers',
-    body: 'When raw messages outside the fresh tail exceed 2,000 tokens, LCM automatically fires incremental compaction. No manual command needed.',
+    body: 'When raw messages outside the fresh tail exceed 2,000 tokens, LCM automatically fires incremental compaction. This happens asynchronously — your conversation isn\'t interrupted. And because source messages are never lost in LCM, compaction is always safe.',
   },
   {
     title: 'Summary Compaction',
-    body: 'The eligible chunk is sent to the model with a structured prompt. A dense, lossless summary comes back. The original messages are replaced — but nothing is lost.',
+    body: 'The eligible chunk is sent to the model with a structured prompt. A summary replaces the source messages in the conversation, but the references to the source messages are preserved.',
   },
   {
     title: 'The Conversation Continues',
