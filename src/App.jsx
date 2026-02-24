@@ -4,6 +4,7 @@
  */
 import CompactionScene from './components/CompactionScene';
 import TraditionalScene from './components/TraditionalScene';
+import { AgentationOverlay } from './components/AgentationOverlay';
 
 function Hero() {
   return (
@@ -81,6 +82,7 @@ export default function App() {
       <TraditionalScene />
       <TransitionDivider />
       <CompactionScene />
+      <AgentationOverlay />
     </main>
   );
 }
