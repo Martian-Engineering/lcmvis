@@ -29,8 +29,8 @@ gsap.registerPlugin(ScrollTrigger);
 // Indices 0–8 are the compaction act; 9–11 are condensation; 12–16 are tool demos.
 const STEPS = [
   {
-    title: 'The Context Window',
-    body: 'Every model turn, the full conversation must fit inside a fixed token budget. Without management, older messages are silently truncated and lost forever.',
+    title: 'Same Conversation, Different Strategy',
+    body: 'Same context window, same token budget — but LCM manages it differently. Watch what happens as messages accumulate.',
   },
   {
     title: 'Messages Arrive',
