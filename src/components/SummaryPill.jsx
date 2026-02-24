@@ -1,0 +1,62 @@
+/**
+ * SummaryPill — renders a summary item (leaf or condensed) in the context
+ * window. Visual style adapts to depth: leaf (orange), d1 (red-pink), etc.
+ */
+import { forwardRef } from 'react';
+
+const DEPTH_META = {
+  0: { color: 'var(--color-summary-leaf)', bg: 'rgba(240,136,62,0.07)', label: 'LEAF' },
+  1: { color: 'var(--color-summary-d1)',   bg: 'rgba(255,123,114,0.07)', label: 'DEPTH 1' },
+};
+
+const fallbackMeta = { color: 'var(--color-muted)', bg: 'rgba(125,133,144,0.07)', label: 'SUMMARY' };
+
+const SummaryPill = forwardRef(function SummaryPill({ summary }, ref) {
+  const { color, bg, label } = DEPTH_META[summary.depth] ?? fallbackMeta;
+  const descendantLabel = summary.depth === 0
+    ? `↳ ${summary.descendantCount} messages compressed`
+    : `↳ ${summary.descendantCount} messages · ${summary.sourceIds?.length ?? 0} leaf nodes`;
+
+  return (
+    <div
+      ref={ref}
+      style={{ borderColor: color, background: bg }}
+      className="rounded-md border px-3 py-2 text-xs leading-snug"
+    >
+      {/* Header row */}
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <div className="flex items-center gap-2">
+          <span
+            style={{ color, borderColor: color }}
+            className="rounded border px-1 py-0.5 text-[9px] font-bold tracking-widest"
+          >
+            {label}
+          </span>
+          <span style={{ color }} className="text-[10px] font-semibold">
+            {summary.id}
+          </span>
+        </div>
+        <span style={{ color: 'var(--color-muted)' }} className="text-[10px] tabular-nums">
+          {summary.tokens.toLocaleString()} tok
+        </span>
+      </div>
+
+      {/* Time range + descendant count */}
+      <div className="flex items-center gap-3 mb-1.5">
+        <span style={{ color: 'var(--color-muted)' }} className="text-[10px]">
+          {summary.timeRange}
+        </span>
+        <span style={{ color: 'var(--color-muted)' }} className="text-[10px]">
+          {descendantLabel}
+        </span>
+      </div>
+
+      {/* Content */}
+      <p style={{ color: 'var(--color-text)' }} className="m-0 text-[11px] leading-relaxed line-clamp-2">
+        {summary.snippet}
+      </p>
+    </div>
+  );
+});
+
+export default SummaryPill;
