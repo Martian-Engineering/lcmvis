@@ -46,7 +46,7 @@ const ContextWindow = forwardRef(function ContextWindow({ items, usedTokens, fas
           </h3>
           {fastForward && (
             <span
-              style={{ color: 'var(--color-summary-leaf)', borderColor: 'var(--color-summary-leaf)' }}
+              style={{ color: 'var(--color-summary)', borderColor: 'var(--color-summary)' }}
               className="rounded border px-1 py-0.5 text-[9px] font-bold tracking-widest"
             >
               ⏩ FF

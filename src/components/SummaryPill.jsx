@@ -1,11 +1,11 @@
 /**
- * SummaryPill — renders a summary item (leaf or condensed) in the context
- * window. Visual style adapts to depth: leaf (orange), d1 (red-pink), etc.
+ * SummaryPill — renders a summary item in the context window.
+ * Visual style adapts to depth: depth-0 (orange), depth-1 (red-pink), etc.
  */
 import { forwardRef } from 'react';
 
 const DEPTH_META = {
-  0: { color: 'var(--color-summary-leaf)', bg: 'rgba(240,136,62,0.07)', label: 'LEAF' },
+  0: { color: 'var(--color-summary)', bg: 'rgba(240,136,62,0.07)', label: 'SUMMARY' },
   1: { color: 'var(--color-summary-d1)',   bg: 'rgba(255,123,114,0.07)', label: 'DEPTH 1' },
 };
 
@@ -15,7 +15,7 @@ const SummaryPill = forwardRef(function SummaryPill({ summary }, ref) {
   const { color, bg, label } = DEPTH_META[summary.depth] ?? fallbackMeta;
   const descendantLabel = summary.depth === 0
     ? `↳ ${summary.descendantCount} messages compressed`
-    : `↳ ${summary.descendantCount} messages · ${summary.sourceIds?.length ?? 0} leaf nodes`;
+    : `↳ ${summary.descendantCount} messages · ${summary.sourceIds?.length ?? 0} summaries`;
 
   return (
     <div

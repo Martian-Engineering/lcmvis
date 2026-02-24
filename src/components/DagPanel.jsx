@@ -3,21 +3,21 @@
  *
  * Layout adapts to what's present:
  *
- *   Leaves only (no d1):
- *     leaf nodes (orange)          ← LEAF_Y
+ *   Summaries only (no d1):
+ *     summary nodes (orange)       ← D0_Y
  *     message groups (blue dashed) ← MSG_Y
  *
  *   With d1 (3-tier layout):
  *     d1 node (red-pink, wide)     ← D1_Y
- *     leaf nodes                   ← LEAF_Y_SHIFTED
+ *     summary nodes                ← D0_Y_SHIFTED
  *     message groups               ← MSG_Y_WITH_D1
  *
  * The SVG uses viewBox + width="100%" so it scales to fit the panel.
- * New leaf nodes animate in via GSAP back.out.
+ * New summary nodes animate in via GSAP back.out.
  * The d1 node triggers a three-phase animation:
- *   1. leaf rects pulse (stroke brightens)
+ *   1. summary rects pulse (stroke brightens)
  *   2. d1 group scales in
- *   3. edges from d1 → each leaf draw in via strokeDashoffset
+ *   3. edges from d1 → each summary draw in via strokeDashoffset
  */
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import gsap from 'gsap';
@@ -27,25 +27,25 @@ const X_PAD   = 20;
 const COL_W   = 200;
 const NODE_W  = 172;
 
-// Leaf node
-const LEAF_H  = 62;
-const LEAF_Y  = 8;   // y when no d1
+// Depth-0 summary node
+const D0_H  = 62;
+const D0_Y  = 8;   // y when no d1
 
 // Message group
 const MSG_W   = 144;
 const MSG_H   = 42;
-const MSG_Y   = LEAF_Y + LEAF_H + 16;  // = 86
+const MSG_Y   = D0_Y + D0_H + 16;  // = 86
 
 // d1 node
 const D1_W    = 220;
 const D1_H    = 64;
 const D1_Y    = 8;
 
-// Leaf position when d1 is present (shifted down to make room)
-const LEAF_Y_SHIFTED = D1_Y + D1_H + 18; // = 90
+// Summary position when d1 is present (shifted down to make room)
+const D0_Y_SHIFTED = D1_Y + D1_H + 18; // = 90
 
-// Message group y when d1 is present (third tier, below shifted leaves)
-const MSG_Y_WITH_D1 = LEAF_Y_SHIFTED + LEAF_H + 16; // = 168
+// Message group y when d1 is present (third tier, below shifted summaries)
+const MSG_Y_WITH_D1 = D0_Y_SHIFTED + D0_H + 16; // = 168
 
 // SVG heights
 const SVG_H_NO_D1   = MSG_Y + MSG_H + 12;          // = 140
@@ -53,26 +53,26 @@ const SVG_H_WITH_D1 = MSG_Y_WITH_D1 + MSG_H + 12;  // = 222
 
 // ── Component ───────────────────────────────────────────────────────────────
 export default function DagPanel({ summaries, highlightIds = [] }) {
-  const leaves  = summaries.filter((s) => s.depth === 0);
-  const d1nodes = summaries.filter((s) => s.depth === 1);
-  const hasD1   = d1nodes.length > 0;
+  const d0Nodes = summaries.filter((s) => s.depth === 0);
+  const d1Nodes = summaries.filter((s) => s.depth === 1);
+  const hasD1   = d1Nodes.length > 0;
 
   // Refs for GSAP
-  const leafGroupRefs = useRef({});  // leaf <g> elements (for scale-in)
-  const leafRectRefs  = useRef({});  // leaf <rect> elements (for pulse)
-  const d1GroupRef    = useRef(null);
-  const d1EdgeRefs    = useRef({});  // paths from d1 → each leaf
+  const d0GroupRefs = useRef({});  // summary <g> elements (for scale-in)
+  const d0RectRefs  = useRef({});  // summary <rect> elements (for pulse)
+  const d1GroupRef  = useRef(null);
+  const d1EdgeRefs  = useRef({});  // paths from d1 → each summary
 
-  const prevLeafCountRef = useRef(0);
-  const prevD1CountRef   = useRef(0);
+  const prevD0CountRef = useRef(0);
+  const prevD1CountRef = useRef(0);
 
-  // ── Animate newly added leaf nodes ────────────────────────────────────────
+  // ── Animate newly added summary nodes ───────────────────────────────────
   useEffect(() => {
-    const incoming = leaves.slice(prevLeafCountRef.current);
-    prevLeafCountRef.current = leaves.length;
+    const incoming = d0Nodes.slice(prevD0CountRef.current);
+    prevD0CountRef.current = d0Nodes.length;
 
     incoming.forEach((s, idx) => {
-      const el = leafGroupRefs.current[s.id];
+      const el = d0GroupRefs.current[s.id];
       if (!el) return;
       gsap.fromTo(
         el,
@@ -80,31 +80,31 @@ export default function DagPanel({ summaries, highlightIds = [] }) {
         { opacity: 1, scale: 1, duration: 0.5, delay: idx * 0.1, ease: 'back.out(1.4)' }
       );
     });
-  }, [leaves]);
+  }, [d0Nodes]);
 
-  // ── Animate d1 node appearing (three-phase) ────────────────────────────────
+  // ── Animate d1 node appearing (three-phase) ──────────────────────────────
   useLayoutEffect(() => {
-    if (d1nodes.length === 0) {
+    if (d1Nodes.length === 0) {
       prevD1CountRef.current = 0;
       return;
     }
-    if (d1nodes.length <= prevD1CountRef.current) return;
-    prevD1CountRef.current = d1nodes.length;
+    if (d1Nodes.length <= prevD1CountRef.current) return;
+    prevD1CountRef.current = d1Nodes.length;
 
-    // Phase 1: pulse all leaf rects
-    const leafRects = leaves
-      .map((l) => leafRectRefs.current[l.id])
+    // Phase 1: pulse all summary rects
+    const d0Rects = d0Nodes
+      .map((s) => d0RectRefs.current[s.id])
       .filter(Boolean);
 
     gsap.timeline()
-      .to(leafRects, {
+      .to(d0Rects, {
         attr: { stroke: '#ffffff', strokeWidth: 2.5 },
         duration: 0.18,
         stagger: 0.04,
         ease: 'power2.out',
       })
-      .to(leafRects, {
-        attr: { stroke: 'var(--color-summary-leaf)', strokeWidth: 1 },
+      .to(d0Rects, {
+        attr: { stroke: 'var(--color-summary)', strokeWidth: 1 },
         duration: 0.18,
         stagger: 0.04,
         ease: 'power2.in',
@@ -118,8 +118,8 @@ export default function DagPanel({ summaries, highlightIds = [] }) {
       )
       // Phase 3: draw in each edge
       .add(() => {
-        leaves.forEach((leaf, i) => {
-          const path = d1EdgeRefs.current[leaf.id];
+        d0Nodes.forEach((node, i) => {
+          const path = d1EdgeRefs.current[node.id];
           if (!path) return;
           const len = path.getTotalLength();
           gsap.set(path, { strokeDasharray: len, strokeDashoffset: len, opacity: 1 });
@@ -131,19 +131,19 @@ export default function DagPanel({ summaries, highlightIds = [] }) {
           });
         });
       }, '-=0.15');
-  }, [d1nodes, leaves]);
+  }, [d1Nodes, d0Nodes]);
 
   // ── SVG geometry ──────────────────────────────────────────────────────────
-  const leafY  = hasD1 ? LEAF_Y_SHIFTED : LEAF_Y;
-  const msgY   = hasD1 ? MSG_Y_WITH_D1  : MSG_Y;
-  const svgH   = hasD1 ? SVG_H_WITH_D1  : SVG_H_NO_D1;
-  const svgW   = X_PAD * 2 + leaves.length * COL_W;
+  const d0Y  = hasD1 ? D0_Y_SHIFTED : D0_Y;
+  const msgY = hasD1 ? MSG_Y_WITH_D1 : MSG_Y;
+  const svgH = hasD1 ? SVG_H_WITH_D1 : SVG_H_NO_D1;
+  const svgW = X_PAD * 2 + d0Nodes.length * COL_W;
 
-  // d1 node: centered over all leaf columns
-  const firstLeafCX = X_PAD + NODE_W / 2;
-  const lastLeafCX  = X_PAD + (leaves.length - 1) * COL_W + NODE_W / 2;
-  const d1CX        = (firstLeafCX + lastLeafCX) / 2;
-  const d1X         = d1CX - D1_W / 2;
+  // d1 node: centered over all summary columns
+  const firstD0CX = X_PAD + NODE_W / 2;
+  const lastD0CX  = X_PAD + (d0Nodes.length - 1) * COL_W + NODE_W / 2;
+  const d1CX      = (firstD0CX + lastD0CX) / 2;
+  const d1X       = d1CX - D1_W / 2;
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -157,17 +157,17 @@ export default function DagPanel({ summaries, highlightIds = [] }) {
           Summary DAG
         </h3>
         <span style={{ color: 'var(--color-muted)' }} className="text-[10px]">
-          {leaves.length} leaf{leaves.length !== 1 ? 's' : ''}
-          {hasD1 ? ` · ${d1nodes.length} d1` : ''}
+          {d0Nodes.length} {d0Nodes.length === 1 ? 'summary' : 'summaries'}
+          {hasD1 ? ` · ${d1Nodes.length} d1` : ''}
         </span>
       </div>
 
       {/* Empty state */}
-      {leaves.length === 0 ? (
+      {d0Nodes.length === 0 ? (
         <div className="flex-1 flex items-center justify-center">
           <p style={{ color: 'var(--color-muted)' }} className="text-xs text-center leading-relaxed">
             The DAG is empty.
-            <br />Leaf nodes appear here as compaction runs.
+            <br />Summary nodes appear here as compaction runs.
           </p>
         </div>
       ) : (
@@ -180,7 +180,7 @@ export default function DagPanel({ summaries, highlightIds = [] }) {
           >
             {/* ── Highlight overlays (painted behind nodes) ─────────────── */}
             {/* d1 highlight */}
-            {hasD1 && d1nodes.map((d1) => (
+            {hasD1 && d1Nodes.map((d1) => (
               <rect
                 key={`hl-${d1.id}`}
                 x={d1X - 3} y={D1_Y - 3}
@@ -196,17 +196,17 @@ export default function DagPanel({ summaries, highlightIds = [] }) {
                 }}
               />
             ))}
-            {/* Leaf highlights */}
-            {leaves.map((s, i) => {
+            {/* Summary highlights */}
+            {d0Nodes.map((s, i) => {
               const colX = X_PAD + i * COL_W;
               return (
                 <rect
                   key={`hl-${s.id}`}
-                  x={colX - 3} y={leafY - 3}
-                  width={NODE_W + 6} height={LEAF_H + 6}
+                  x={colX - 3} y={d0Y - 3}
+                  width={NODE_W + 6} height={D0_H + 6}
                   rx={9}
                   fill="rgba(240,136,62,0.08)"
-                  stroke="var(--color-summary-leaf)"
+                  stroke="var(--color-summary)"
                   strokeWidth={2}
                   style={{
                     opacity: highlightIds.includes(s.id) ? 1 : 0,
@@ -217,7 +217,7 @@ export default function DagPanel({ summaries, highlightIds = [] }) {
               );
             })}
             {/* Message group highlights */}
-            {leaves.map((s, i) => {
+            {d0Nodes.map((s, i) => {
               const colX = X_PAD + i * COL_W;
               const msgX = colX + (NODE_W - MSG_W) / 2;
               return (
@@ -239,7 +239,7 @@ export default function DagPanel({ summaries, highlightIds = [] }) {
             })}
 
             {/* ── d1 node ───────────────────────────────────────────────── */}
-            {hasD1 && d1nodes.map((d1) => (
+            {hasD1 && d1Nodes.map((d1) => (
               <g key={d1.id} ref={d1GroupRef} style={{ opacity: 0 }}>
                 <rect
                   x={d1X} y={D1_Y}
@@ -268,36 +268,36 @@ export default function DagPanel({ summaries, highlightIds = [] }) {
               </g>
             ))}
 
-            {/* ── Leaf nodes + edges ────────────────────────────────────── */}
-            {leaves.map((s, i) => {
-              const colX   = X_PAD + i * COL_W;
-              const leafCX = colX + NODE_W / 2;
-              const msgX   = colX + (NODE_W - MSG_W) / 2;
-              const msgCX  = msgX + MSG_W / 2;
+            {/* ── Summary nodes + edges ──────────────────────────────────── */}
+            {d0Nodes.map((s, i) => {
+              const colX  = X_PAD + i * COL_W;
+              const nodeCX = colX + NODE_W / 2;
+              const msgX  = colX + (NODE_W - MSG_W) / 2;
+              const msgCX = msgX + MSG_W / 2;
 
-              // Edge: leaf → message group
-              const leafToMsg = [
-                `M ${leafCX} ${leafY + LEAF_H}`,
-                `C ${leafCX} ${leafY + LEAF_H + 20}`,
+              // Edge: summary → message group
+              const summaryToMsg = [
+                `M ${nodeCX} ${d0Y + D0_H}`,
+                `C ${nodeCX} ${d0Y + D0_H + 20}`,
                 `  ${msgCX}  ${msgY - 20}`,
                 `  ${msgCX}  ${msgY}`,
               ].join(' ');
 
-              // Edge: d1 → this leaf (drawn via strokeDashoffset animation)
-              const d1ToLeaf = [
+              // Edge: d1 → this summary (drawn via strokeDashoffset animation)
+              const d1ToSummary = [
                 `M ${d1CX} ${D1_Y + D1_H}`,
                 `C ${d1CX} ${D1_Y + D1_H + 14}`,
-                `  ${leafCX} ${leafY - 14}`,
-                `  ${leafCX} ${leafY}`,
+                `  ${nodeCX} ${d0Y - 14}`,
+                `  ${nodeCX} ${d0Y}`,
               ].join(' ');
 
               return (
                 <g key={s.id}>
-                  {/* d1 → leaf edge (animated in, starts invisible) */}
+                  {/* d1 → summary edge (animated in, starts invisible) */}
                   {hasD1 && (
                     <path
                       ref={(el) => { d1EdgeRefs.current[s.id] = el; }}
-                      d={d1ToLeaf}
+                      d={d1ToSummary}
                       stroke="var(--color-summary-d1)"
                       strokeWidth={1.5}
                       fill="none"
@@ -305,45 +305,45 @@ export default function DagPanel({ summaries, highlightIds = [] }) {
                     />
                   )}
 
-                  {/* Leaf node group */}
+                  {/* Summary node group */}
                   <g
-                    ref={(el) => { leafGroupRefs.current[s.id] = el; }}
+                    ref={(el) => { d0GroupRefs.current[s.id] = el; }}
                     style={{ opacity: 0 }}
                   >
                     <rect
-                      ref={(el) => { leafRectRefs.current[s.id] = el; }}
-                      x={colX} y={leafY}
-                      width={NODE_W} height={LEAF_H}
+                      ref={(el) => { d0RectRefs.current[s.id] = el; }}
+                      x={colX} y={d0Y}
+                      width={NODE_W} height={D0_H}
                       rx={6}
                       fill="rgba(240,136,62,0.10)"
-                      stroke="var(--color-summary-leaf)"
+                      stroke="var(--color-summary)"
                       strokeWidth={1}
                     />
-                    <text x={colX + 9} y={leafY + 15}
-                      fill="var(--color-summary-leaf)"
+                    <text x={colX + 9} y={d0Y + 15}
+                      fill="var(--color-summary)"
                       fontSize={9} fontWeight="bold" fontFamily="monospace"
                     >
-                      LEAF · {s.tokens} tok
+                      SUMMARY · {s.tokens} tok
                     </text>
-                    <text x={colX + 9} y={leafY + 29}
+                    <text x={colX + 9} y={d0Y + 29}
                       fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
                     >
                       {s.id}
                     </text>
-                    <text x={colX + 9} y={leafY + 43}
+                    <text x={colX + 9} y={d0Y + 43}
                       fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
                     >
                       {s.timeRange}
                     </text>
-                    <text x={colX + 9} y={leafY + 57}
+                    <text x={colX + 9} y={d0Y + 57}
                       fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
                     >
                       ↳ {s.descendantCount} msgs
                     </text>
 
-                    {/* leaf → message group edge */}
+                    {/* summary → message group edge */}
                     <path
-                      d={leafToMsg}
+                      d={summaryToMsg}
                       stroke="var(--color-border)"
                       strokeWidth={1.5}
                       fill="none"

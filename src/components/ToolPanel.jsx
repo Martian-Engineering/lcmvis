@@ -3,7 +3,7 @@
  *
  * Props:
  *   view        — 'describe' | 'grep' | 'expand'
- *   expandPhase — 1..3 (expand only: 1=grant+spawn+d1read, 2=leaf expand, 3=synthesis done)
+ *   expandPhase — 1..3 (expand only: 1=grant+spawn+d1read, 2=summary expand, 3=synthesis done)
  */
 import gsap from 'gsap';
 import { useEffect, useLayoutEffect, useRef } from 'react';
@@ -14,7 +14,7 @@ const DESCRIBE_NODE = {
   depth:     1,
   tokens:    580,
   timeRange: 'Turns 1–16',
-  children:  ['sum_leaf_01', 'sum_leaf_02', 'sum_leaf_03', 'sum_leaf_04'],
+  children:  ['sum_01', 'sum_02', 'sum_03', 'sum_04'],
   snippet:   'Project arc: OAuth2 + RBAC auth built from scratch, audit logging and rate limiting added, CI/CD pipeline configured. N+1 query resolved.',
 };
 
@@ -38,9 +38,9 @@ const GREP_RESULTS = [
     snippet: 'That CORS error usually means the redirect URI wasn\'t registered correctly in your OAuth2 provider settings.',
   },
   {
-    id: 'sum_leaf_01',
-    label: 'LEAF',
-    color: 'var(--color-summary-leaf)',
+    id: 'sum_01',
+    label: 'SUMMARY',
+    color: 'var(--color-summary)',
     borderFaint: 'rgba(240,136,62,0.2)',
     timeRange: 'Turns 1–4',
     snippet: 'OAuth2 setup: installed client, resolved CORS via redirect URI config, implemented token persistence with localStorage…',
@@ -66,7 +66,7 @@ const MAIN_AGENT_LINES = [
 // Sub-agent traversal log: shown inside the framed sub-agent box
 const SUB_AGENT_LINES = [
   { minPhase: 1, accent: true,  text: '⟶  Reading sum_d1_01  (580 tok)' },
-  { minPhase: 2, accent: true,  text: '⟶  Expanding sum_leaf_01 · Turns 1–4' },
+  { minPhase: 2, accent: true,  text: '⟶  Expanding sum_01 · Turns 1–4' },
   { minPhase: 2, accent: false, text: '    Fetching 8 source messages…' },
   { minPhase: 3, accent: true,  text: '✓  Synthesis complete' },
 ];
@@ -202,7 +202,7 @@ export default function ToolPanel({ view, expandPhase }) {
                   <span style={{ color: 'var(--color-muted)' }} className="text-[9px] font-mono w-16 shrink-0">children</span>
                   <div className="flex flex-col gap-0.5">
                     {DESCRIBE_NODE.children.map((c) => (
-                      <span key={c} style={{ color: 'var(--color-summary-leaf)' }} className="text-[9px] font-mono">
+                      <span key={c} style={{ color: 'var(--color-summary)' }} className="text-[9px] font-mono">
                         {c}
                       </span>
                     ))}
@@ -274,7 +274,7 @@ export default function ToolPanel({ view, expandPhase }) {
               {MAIN_AGENT_LINES.filter((l) => expandPhase >= l.minPhase).map((l, i) => (
                 <div
                   key={i}
-                  style={{ color: l.accent ? 'var(--color-summary-leaf)' : 'var(--color-muted)' }}
+                  style={{ color: l.accent ? 'var(--color-summary)' : 'var(--color-muted)' }}
                   className="text-[9px] font-mono leading-snug"
                 >
                   {l.text}

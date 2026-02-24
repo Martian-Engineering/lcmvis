@@ -4,7 +4,7 @@
  * Structure (left column, top to bottom):
  *   Sections 0–8   Normal narration (80vh each, 100vh for section 0)
  *   Scrub section  220vh tall; sticky inner card; ScrollTrigger scrub drives
- *                  leaf_3 and leaf_4 appearing as the user scrolls
+ *                  summary 3 and summary 4 appearing as the user scrolls
  *   Sections 9–13  Normal narration: condensation threshold, d1 pass,
  *                  bounded context, and tool stubs (describe/grep, expand)
  *
@@ -19,14 +19,14 @@ import ToolPanel from './ToolPanel';
 import Narration from './Narration';
 import {
   MESSAGES as M,
-  LEAF_SUMMARY, LEAF_SUMMARY_2, LEAF_SUMMARY_3, LEAF_SUMMARY_4, D1_SUMMARY,
+  SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4, D1_SUMMARY,
   FRESH_TAIL_PLACEHOLDER,
 } from '../data/conversation';
 
 gsap.registerPlugin(ScrollTrigger);
 
 // ── Narration copy ──────────────────────────────────────────────────────────
-// Indices 0–8 are the leaf-compaction act; 9–11 are condensation; 12–16 are tool demos.
+// Indices 0–8 are the compaction act; 9–11 are condensation; 12–16 are tool demos.
 const STEPS = [
   {
     title: 'The Context Window',
@@ -46,32 +46,32 @@ const STEPS = [
   },
   {
     title: 'Compaction Triggers',
-    body: 'When raw messages outside the fresh tail exceed 2,000 tokens, LCM automatically fires an incremental leaf pass. No manual command needed.',
+    body: 'When raw messages outside the fresh tail exceed 2,000 tokens, LCM automatically fires incremental compaction. No manual command needed.',
   },
   {
-    title: 'Leaf Compaction',
-    body: 'The eligible chunk is sent to the model with a structured prompt. A dense, lossless leaf summary comes back. The original messages are replaced — but nothing is lost.',
+    title: 'Summary Compaction',
+    body: 'The eligible chunk is sent to the model with a structured prompt. A dense, lossless summary comes back. The original messages are replaced — but nothing is lost.',
   },
   {
     title: 'The Conversation Continues',
-    body: 'New messages arrive. The fresh tail advances. The leaf summary is a compact stand-in — the agent can expand it on demand.',
+    body: 'New messages arrive. The fresh tail advances. The summary is a compact stand-in — the agent can expand it on demand.',
   },
   {
     title: 'The Cycle Repeats',
-    body: 'After more turns, a new cohort of messages accumulates outside the fresh tail. The threshold is crossed and another leaf pass fires automatically.',
+    body: 'After more turns, a new cohort of messages accumulates outside the fresh tail. The threshold is crossed and another compaction pass fires automatically.',
   },
   {
-    title: 'Second Leaf Pass',
-    body: 'A second leaf summary is created. The Summary DAG now has two leaf nodes, each a dense slice of conversation history.',
+    title: 'Second Compaction Pass',
+    body: 'A second summary is created. The Summary DAG now has two summary nodes, each a dense slice of conversation history.',
   },
   // Post-scrub: condensation act
   {
     title: 'Condensation Threshold',
-    body: 'When enough leaf summaries accumulate at the same depth — 4 in this case — LCM fires a condensation pass. Leaves are synthesized into a single depth-1 node.',
+    body: 'When enough summaries accumulate at the same depth — 4 in this case — LCM fires a condensation pass. They are synthesized into a single depth-1 node.',
   },
   {
     title: 'Condensation Pass',
-    body: 'The four leaf summaries are sent to the model with a higher-level synthesis prompt. The result is a depth-1 summary: more abstract, more durable, covering the full arc.',
+    body: 'The four summaries are sent to the model with a higher-level synthesis prompt. The result is a depth-1 summary: more abstract, more durable, covering the full arc.',
   },
   {
     title: 'A Bounded, Lossless Context',
@@ -95,7 +95,7 @@ const STEPS = [
   },
   {
     title: 'Walking the DAG',
-    body: 'The sub-agent walks the summary DAG downward — reading the depth-1 node, expanding into the relevant leaf, then fetching the underlying source messages. Only what\'s needed is retrieved, bounded by the grant\'s token cap.',
+    body: 'The sub-agent walks the summary DAG downward — reading the depth-1 node, expanding into the relevant summary, then fetching the underlying source messages. Only what\'s needed is retrieved, bounded by the grant\'s token cap.',
   },
   {
     title: 'Focused Answer',
@@ -127,37 +127,37 @@ function itemsForStep(s) {
       summaries: [],
     };
     case 5:  return {
-      items: [sumItem(LEAF_SUMMARY), msgItem(M[8]),msgItem(M[9]),msgItem(M[10]),msgItem(M[11])],
-      summaries: [LEAF_SUMMARY],
+      items: [sumItem(SUMMARY_1), msgItem(M[8]),msgItem(M[9]),msgItem(M[10]),msgItem(M[11])],
+      summaries: [SUMMARY_1],
     };
     case 6:  return {
       items: [
-        sumItem(LEAF_SUMMARY),
+        sumItem(SUMMARY_1),
         msgItem(M[8]),msgItem(M[9]),msgItem(M[10]),msgItem(M[11]),
         msgItem(M[12]),msgItem(M[13]),msgItem(M[14]),msgItem(M[15]),
       ],
-      summaries: [LEAF_SUMMARY],
+      summaries: [SUMMARY_1],
     };
     case 7:  return {
       items: [
-        sumItem(LEAF_SUMMARY),
+        sumItem(SUMMARY_1),
         msgItem(M[8]),msgItem(M[9]),msgItem(M[10]),msgItem(M[11]),
         msgItem(M[12]),msgItem(M[13]),msgItem(M[14]),msgItem(M[15]),
         msgItem(M[16]),msgItem(M[17]),msgItem(M[18]),msgItem(M[19]),
       ],
-      summaries: [LEAF_SUMMARY],
+      summaries: [SUMMARY_1],
     };
     case 8:  return {
       items: [
-        sumItem(LEAF_SUMMARY), sumItem(LEAF_SUMMARY_2),
+        sumItem(SUMMARY_1), sumItem(SUMMARY_2),
         msgItem(M[16]),msgItem(M[17]),msgItem(M[18]),msgItem(M[19]),
       ],
-      summaries: [LEAF_SUMMARY, LEAF_SUMMARY_2],
+      summaries: [SUMMARY_1, SUMMARY_2],
     };
-    // Post-scrub states (leaf 3 and 4 already added by the scrub section)
+    // Post-scrub states (summaries 3 and 4 already added by the scrub section)
     case 9:  return {
-      items: [sumItem(LEAF_SUMMARY),sumItem(LEAF_SUMMARY_2),sumItem(LEAF_SUMMARY_3),sumItem(LEAF_SUMMARY_4), ftItem],
-      summaries: [LEAF_SUMMARY, LEAF_SUMMARY_2, LEAF_SUMMARY_3, LEAF_SUMMARY_4],
+      items: [sumItem(SUMMARY_1),sumItem(SUMMARY_2),sumItem(SUMMARY_3),sumItem(SUMMARY_4), ftItem],
+      summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4],
     };
     case 10:
     case 11:
@@ -168,7 +168,7 @@ function itemsForStep(s) {
     case 16:
     case 17: return {
       items: [sumItem(D1_SUMMARY), ftItem],
-      summaries: [LEAF_SUMMARY, LEAF_SUMMARY_2, LEAF_SUMMARY_3, LEAF_SUMMARY_4, D1_SUMMARY],
+      summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4, D1_SUMMARY],
     };
     default: return { items: [], summaries: [] };
   }
@@ -193,22 +193,22 @@ export default function CompactionScene() {
   const [toolView,    setToolView]    = useState(null);  // null | 'describe' | 'grep' | 'expand'
   const [expandPhase, setExpandPhase] = useState(0);     // 1..3 (driven by step, not timer)
 
-  // Scrub milestone flags (reset when leaving scrub section backward)
-  const leaf3Added = useRef(false);
-  const leaf4Added = useRef(false);
+  // Scrub milestone flags for summary 3 and 4 (reset when leaving scrub section backward)
+  const sum3Added = useRef(false);
+  const sum4Added = useRef(false);
 
   const usedTokens = sumTokens(items);
 
   // DAG nodes to highlight — driven by active tool view and expand phase.
   // describe: highlights the node being inspected (d1).
   // grep: hits span messages + both summary levels.
-  // expand: sub-agent walks d1 → leaf → message group progressively.
+  // expand: sub-agent walks d1 → summary → message group progressively.
   const dagHighlightIds = useMemo(() => {
     if (toolView === 'describe') return ['sum_d1_01'];
-    if (toolView === 'grep')     return ['sum_d1_01', 'sum_leaf_01', 'msgs_sum_leaf_01'];
+    if (toolView === 'grep')     return ['sum_d1_01', 'sum_01', 'msgs_sum_01'];
     if (toolView === 'expand') {
-      if (expandPhase >= 3) return ['sum_d1_01', 'sum_leaf_01', 'msgs_sum_leaf_01'];
-      if (expandPhase >= 2) return ['sum_d1_01', 'sum_leaf_01'];
+      if (expandPhase >= 3) return ['sum_d1_01', 'sum_01', 'msgs_sum_01'];
+      if (expandPhase >= 2) return ['sum_d1_01', 'sum_01'];
       if (expandPhase >= 1) return ['sum_d1_01'];
     }
     return [];
@@ -235,7 +235,7 @@ export default function CompactionScene() {
     });
   }, []);
 
-  // ── Apply step (instant for most; animated for leaf-pass and d1 steps) ──
+  // ── Apply step (instant for most; animated for compaction and d1 steps) ──
   const applyStep = useCallback((s) => {
     const prev = prevStepRef.current;
     prevStepRef.current = s;
@@ -251,7 +251,7 @@ export default function CompactionScene() {
     } else if (s === 14) {
       setToolView('expand');   setExpandPhase(1);  // grant issued + sub-agent spawned + d1 read
     } else if (s === 15) {
-      setToolView('expand');   setExpandPhase(2);  // leaf expanded + source messages fetched
+      setToolView('expand');   setExpandPhase(2);  // summary expanded + source messages fetched
     } else if (s === 16) {
       setToolView('expand');   setExpandPhase(3);  // synthesis complete + answer returned
     } else if (s === 17) {
@@ -260,10 +260,10 @@ export default function CompactionScene() {
       setToolView(null);       setExpandPhase(0);
     }
 
-    // Leaf-pass collapse animations (forward only)
+    // Compaction collapse animations (forward only)
     if (s === 5 && prev < 5) {
       setCompacting(false);
-      animateCollapse(LEAF_SUMMARY.sourceIds, () => {
+      animateCollapse(SUMMARY_1.sourceIds, () => {
         const t = itemsForStep(5);
         setItems(t.items); setSummaries(t.summaries);
       });
@@ -271,7 +271,7 @@ export default function CompactionScene() {
     }
     if (s === 8 && prev < 8) {
       setCompacting(false);
-      animateCollapse(LEAF_SUMMARY_2.sourceIds, () => {
+      animateCollapse(SUMMARY_2.sourceIds, () => {
         const t = itemsForStep(8);
         setItems(t.items); setSummaries(t.summaries);
       });
@@ -281,7 +281,7 @@ export default function CompactionScene() {
     // Condensation collapse animation (forward only: steps 9→10)
     if (s === 10 && prev === 9) {
       animateCollapse(
-        [LEAF_SUMMARY.id, LEAF_SUMMARY_2.id, LEAF_SUMMARY_3.id, LEAF_SUMMARY_4.id],
+        [SUMMARY_1.id, SUMMARY_2.id, SUMMARY_3.id, SUMMARY_4.id],
         () => {
           const t = itemsForStep(10);
           setItems(t.items); setSummaries(t.summaries);
@@ -341,19 +341,19 @@ export default function CompactionScene() {
 
       onEnter: () => {
         // Start of fast-forward: reset to end-of-step-8 state + placeholder
-        leaf3Added.current = false;
-        leaf4Added.current = false;
+        sum3Added.current = false;
+        sum4Added.current = false;
         setFastForward(true);
         setStep(-1); // not a numbered narration step
         setCompacting(false);
-        setItems([sumItem(LEAF_SUMMARY), sumItem(LEAF_SUMMARY_2), ftItem]);
-        setSummaries([LEAF_SUMMARY, LEAF_SUMMARY_2]);
+        setItems([sumItem(SUMMARY_1), sumItem(SUMMARY_2), ftItem]);
+        setSummaries([SUMMARY_1, SUMMARY_2]);
       },
 
       onLeaveBack: () => {
         // Scrolled back above the scrub section — revert to step 8
-        leaf3Added.current = false;
-        leaf4Added.current = false;
+        sum3Added.current = false;
+        sum4Added.current = false;
         setFastForward(false);
         const t = itemsForStep(8);
         setItems(t.items);
@@ -366,42 +366,42 @@ export default function CompactionScene() {
       },
 
       onUpdate: (self) => {
-        // Milestone at 40%: leaf 3 appears
-        if (self.progress >= 0.4 && !leaf3Added.current) {
-          leaf3Added.current = true;
+        // Milestone at 40%: summary 3 appears
+        if (self.progress >= 0.4 && !sum3Added.current) {
+          sum3Added.current = true;
           setSummaries((prev) =>
-            prev.some((s) => s.id === LEAF_SUMMARY_3.id) ? prev : [...prev, LEAF_SUMMARY_3]
+            prev.some((s) => s.id === SUMMARY_3.id) ? prev : [...prev, SUMMARY_3]
           );
           setItems((prev) => {
-            if (prev.some((i) => i.data?.id === LEAF_SUMMARY_3.id)) return prev;
+            if (prev.some((i) => i.data?.id === SUMMARY_3.id)) return prev;
             const without = prev.filter((i) => i.type !== 'fresh-placeholder');
-            return [...without, sumItem(LEAF_SUMMARY_3), ftItem];
+            return [...without, sumItem(SUMMARY_3), ftItem];
           });
         }
-        if (self.progress < 0.4 && leaf3Added.current) {
-          // Scrolled backward past milestone — remove leaf 3 (and 4 if present)
-          leaf3Added.current = false;
-          leaf4Added.current = false;
-          setSummaries([LEAF_SUMMARY, LEAF_SUMMARY_2]);
-          setItems([sumItem(LEAF_SUMMARY), sumItem(LEAF_SUMMARY_2), ftItem]);
+        if (self.progress < 0.4 && sum3Added.current) {
+          // Scrolled backward past milestone — remove summary 3 (and 4 if present)
+          sum3Added.current = false;
+          sum4Added.current = false;
+          setSummaries([SUMMARY_1, SUMMARY_2]);
+          setItems([sumItem(SUMMARY_1), sumItem(SUMMARY_2), ftItem]);
         }
 
-        // Milestone at 72%: leaf 4 appears
-        if (self.progress >= 0.72 && !leaf4Added.current) {
-          leaf4Added.current = true;
+        // Milestone at 72%: summary 4 appears
+        if (self.progress >= 0.72 && !sum4Added.current) {
+          sum4Added.current = true;
           setSummaries((prev) =>
-            prev.some((s) => s.id === LEAF_SUMMARY_4.id) ? prev : [...prev, LEAF_SUMMARY_4]
+            prev.some((s) => s.id === SUMMARY_4.id) ? prev : [...prev, SUMMARY_4]
           );
           setItems((prev) => {
-            if (prev.some((i) => i.data?.id === LEAF_SUMMARY_4.id)) return prev;
+            if (prev.some((i) => i.data?.id === SUMMARY_4.id)) return prev;
             const without = prev.filter((i) => i.type !== 'fresh-placeholder');
-            return [...without, sumItem(LEAF_SUMMARY_4), ftItem];
+            return [...without, sumItem(SUMMARY_4), ftItem];
           });
         }
-        if (self.progress < 0.72 && leaf4Added.current) {
-          leaf4Added.current = false;
-          setSummaries((prev) => prev.filter((s) => s.id !== LEAF_SUMMARY_4.id));
-          setItems((prev) => prev.filter((i) => i.data?.id !== LEAF_SUMMARY_4.id));
+        if (self.progress < 0.72 && sum4Added.current) {
+          sum4Added.current = false;
+          setSummaries((prev) => prev.filter((s) => s.id !== SUMMARY_4.id));
+          setItems((prev) => prev.filter((i) => i.data?.id !== SUMMARY_4.id));
         }
       },
     });
@@ -411,12 +411,12 @@ export default function CompactionScene() {
 
   // ── Banner copy ───────────────────────────────────────────────────────────
   const bannerText = step <= 5
-    ? '⚡  Leaf pass triggered — Turns 1–4 (2,485 tok) outside fresh tail exceed the 2,000-token threshold'
-    : '⚡  Leaf pass triggered — Turns 5–8 (2,430 tok) outside fresh tail exceed the 2,000-token threshold';
+    ? '⚡  Compaction triggered — Turns 1–4 (2,485 tok) outside fresh tail exceed the 2,000-token threshold'
+    : '⚡  Compaction triggered — Turns 5–8 (2,430 tok) outside fresh tail exceed the 2,000-token threshold';
 
   // ── Fast-forward card (sticky inside the scrub section) ──────────────────
   function FastForwardCard() {
-    const leafIds = [LEAF_SUMMARY_3.id, LEAF_SUMMARY_4.id];
+    const newSummaryIds = [SUMMARY_3.id, SUMMARY_4.id];
     const summaryIds = summaries.map((s) => s.id);
     return (
       <div className="flex flex-col gap-4">
@@ -432,8 +432,8 @@ export default function CompactionScene() {
         {/* Badge */}
         <div className="flex items-center gap-2">
           <span style={{
-            color: 'var(--color-summary-leaf)',
-            borderColor: 'var(--color-summary-leaf)',
+            color: 'var(--color-summary)',
+            borderColor: 'var(--color-summary)',
           }} className="rounded border px-2 py-0.5 text-[10px] font-bold tracking-widest">
             ⏩ FAST FORWARD
           </span>
@@ -443,15 +443,15 @@ export default function CompactionScene() {
         </h2>
         <p style={{ color: 'var(--color-muted)', lineHeight: '1.7' }} className="text-sm m-0">
           Each new cohort of messages outside the fresh tail automatically
-          triggers another leaf pass. Watch the DAG grow as you scroll.
+          triggers another compaction pass. Watch the DAG grow as you scroll.
         </p>
-        {/* Leaf accumulation tracker */}
+        {/* Summary accumulation tracker */}
         <div className="flex flex-col gap-1.5">
-          {[LEAF_SUMMARY_3, LEAF_SUMMARY_4].map((s) => {
+          {[SUMMARY_3, SUMMARY_4].map((s) => {
             const present = summaryIds.includes(s.id);
             return (
               <div key={s.id} style={{
-                color: present ? 'var(--color-summary-leaf)' : 'var(--color-border)',
+                color: present ? 'var(--color-summary)' : 'var(--color-border)',
                 transition: 'color 0.4s',
               }} className="text-xs flex items-center gap-2">
                 <span>{present ? '●' : '○'}</span>
@@ -523,8 +523,8 @@ export default function CompactionScene() {
          */}
         <div style={{
           background: 'rgba(240,136,62,0.13)',
-          border: '1px solid var(--color-summary-leaf)',
-          color: 'var(--color-summary-leaf)',
+          border: '1px solid var(--color-summary)',
+          color: 'var(--color-summary)',
           maxHeight: compacting ? '60px' : 0,
           overflow: 'hidden',
           opacity: compacting ? 1 : 0,

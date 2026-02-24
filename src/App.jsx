@@ -13,7 +13,7 @@ function Hero() {
       style={{ minHeight: '100vh', padding: '4rem 2rem' }}
     >
       <p
-        style={{ color: 'var(--color-summary-leaf)' }}
+        style={{ color: 'var(--color-summary)' }}
         className="text-xs font-bold uppercase tracking-[0.2em] mb-4"
       >
         Lossless Context Management
@@ -52,7 +52,7 @@ function TransitionDivider() {
     >
       <div style={{ borderColor: 'var(--color-border)' }} className="w-px h-16 border-l mb-8" />
       <span
-        style={{ color: 'var(--color-summary-leaf)', borderColor: 'var(--color-summary-leaf)' }}
+        style={{ color: 'var(--color-summary)', borderColor: 'var(--color-summary)' }}
         className="rounded border px-3 py-1 text-xs font-bold tracking-widest mb-6"
       >
         ENTER LCM
