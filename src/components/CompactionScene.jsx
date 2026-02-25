@@ -115,6 +115,22 @@ const STEPS = [
     title: 'The Model\'s View',
     body: 'This is what the model receives each turn: a compact summary of all prior history, followed by the verbatim recent conversation. Full coverage. Bounded cost. This is what makes long conversations tractable.',
   },
+  {
+    title: 'A Large File Arrives',
+    body: 'When you paste a large file into the conversation — a log dump, a codebase snapshot, a JSON export — LCM detects it automatically at ingestion. This log file is 28,500 tokens: more than the entire context budget of some models.',
+  },
+  {
+    title: 'LCM Intercepts',
+    body: 'Before the file enters the context window, LCM parses embedded file blocks. This file exceeds the 25,000-token threshold, so LCM extracts it: content is stored to disk and the original block is replaced with a compact stub.',
+  },
+  {
+    title: 'A Compact Reference',
+    body: 'The context window receives a ~200 token stub instead of 28,500 tokens. The full log is safely on disk. The stub tells the agent what the file contains — name, ID, and an exploration summary — so it knows exactly when and how to retrieve it.',
+  },
+  {
+    title: 'Retrieval on Demand',
+    body: 'When the agent needs the file, it calls lcm_describe with the file ID. The full content comes back immediately. No budget impact at ingestion. Full access on demand. This is how LCM lets you paste large files freely without blowing your context.',
+  },
 ];
 
 const TOTAL_STEPS = STEPS.length;
@@ -175,7 +191,9 @@ function itemsForStep(s) {
     case 14: case 15: case 16: case 17:
     // Assembler steps: keep the context window at the same state as post-condensation.
     // The AssemblerPanel is self-contained and shows its own richer example independently.
-    case 18: case 19: case 20: case 21: return {
+    case 18: case 19: case 20: case 21:
+    // Large file steps: same — LargeFilePanel is self-contained.
+    case 22: case 23: case 24: case 25: return {
       items: [sumItem(D1_SUMMARY), ftItem],
       summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4, D1_SUMMARY],
     };
@@ -203,6 +221,10 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
   // Assembler visualization state (steps 18–21)
   const [assemblerView,  setAssemblerView]  = useState(false);
   const [assemblerPhase, setAssemblerPhase] = useState(0);
+
+  // Large file visualization state (steps 22–25)
+  const [largeFileView,  setLargeFileView]  = useState(false);
+  const [largeFilePhase, setLargeFilePhase] = useState(0);
 
   // Scrub milestone flags
   const sum3Added = useRef(false);
@@ -234,10 +256,12 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
       showFreshTail: step >= 3 || fastForward,
       toolView, expandPhase, dagHighlightIds, bannerText,
       assemblerView, assemblerPhase,
+      largeFileView, largeFilePhase,
     });
   }, [step, items, summaries, usedTokens, compacting, fastForward,
       toolView, expandPhase, dagHighlightIds, bannerText,
-      assemblerView, assemblerPhase, onStateChange]);
+      assemblerView, assemblerPhase,
+      largeFileView, largeFilePhase, onStateChange]);
 
   // ── Collapse animation (delegated to SharedPanel) ─────────────────────────
   const animateCollapse = useCallback((ids, onComplete) => {
@@ -282,6 +306,13 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
       setAssemblerView(true);  setAssemblerPhase(s - 18);
     } else {
       setAssemblerView(false); setAssemblerPhase(0);
+    }
+
+    // Large file view driven by step number (steps 22–25)
+    if (s >= 22 && s <= 25) {
+      setLargeFileView(true);  setLargeFilePhase(s - 22);
+    } else {
+      setLargeFileView(false); setLargeFilePhase(0);
     }
 
     // Compaction collapse animations (forward only)
