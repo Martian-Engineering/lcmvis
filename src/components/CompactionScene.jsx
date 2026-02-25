@@ -95,6 +95,22 @@ const STEPS = [
     title: 'Focused Answer',
     body: 'The sub-agent synthesizes a precise answer from the original content and returns it to the main agent. Full fidelity. Bounded cost. The main context is unchanged — but it now has the exact information it needed from the very first messages of the conversation.',
   },
+  {
+    title: 'From DAG to Model',
+    body: 'The tool calls are complete, but one question remains: how do summaries actually reach the model? Before every turn, an assembler runs. It reads the context items, resolves each summary to full text, and builds the exact message array the API receives.',
+  },
+  {
+    title: 'Two Zones',
+    body: 'The context budget splits into two regions: an evictable prefix filled by summaries — newest retained, oldest dropped first if space runs out — and a protected fresh tail that\'s always appended unconditionally. The model always has verbatim recency.',
+  },
+  {
+    title: 'Eviction Without Deletion',
+    body: 'If summaries overflow the budget, the oldest are silently dropped from the assembled context — but they\'re never deleted from the DAG. They remain fully accessible via lcm_expand_query. The main context stays lean; nothing is truly lost.',
+  },
+  {
+    title: 'The Model\'s View',
+    body: 'This is what the model receives each turn: a compact summary of all prior history, followed by the verbatim recent conversation. Full coverage. Bounded cost. This is what makes long conversations tractable.',
+  },
 ];
 
 const TOTAL_STEPS = STEPS.length;
@@ -152,7 +168,8 @@ function itemsForStep(s) {
       summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4],
     };
     case 10: case 11: case 12: case 13:
-    case 14: case 15: case 16: case 17: return {
+    case 14: case 15: case 16: case 17:
+    case 18: case 19: case 20: case 21: return {
       items: [sumItem(D1_SUMMARY), ftItem],
       summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4, D1_SUMMARY],
     };
@@ -174,8 +191,12 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
   const staggerQueue   = useRef([]);
 
   // Tool visualization state (steps 12–17)
-  const [toolView,    setToolView]    = useState(null);
-  const [expandPhase, setExpandPhase] = useState(0);
+  const [toolView,       setToolView]       = useState(null);
+  const [expandPhase,    setExpandPhase]    = useState(0);
+
+  // Assembler visualization state (steps 18–21)
+  const [assemblerView,  setAssemblerView]  = useState(false);
+  const [assemblerPhase, setAssemblerPhase] = useState(0);
 
   // Scrub milestone flags
   const sum3Added = useRef(false);
@@ -206,9 +227,11 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
       step, items, summaries, usedTokens, compacting, fastForward,
       showFreshTail: step >= 3 || fastForward,
       toolView, expandPhase, dagHighlightIds, bannerText,
+      assemblerView, assemblerPhase,
     });
   }, [step, items, summaries, usedTokens, compacting, fastForward,
-      toolView, expandPhase, dagHighlightIds, bannerText, onStateChange]);
+      toolView, expandPhase, dagHighlightIds, bannerText,
+      assemblerView, assemblerPhase, onStateChange]);
 
   // ── Collapse animation (delegated to SharedPanel) ─────────────────────────
   const animateCollapse = useCallback((ids, onComplete) => {
@@ -231,7 +254,7 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
     setFastForward(false);
     setCompacting(s === 4 || s === 7);
 
-    // Tool view driven by step number
+    // Tool view driven by step number (steps 12–17)
     if (s === 12) {
       setToolView('describe'); setExpandPhase(0);
     } else if (s === 13) {
@@ -246,6 +269,13 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
       setToolView('expand');   setExpandPhase(3);
     } else {
       setToolView(null);       setExpandPhase(0);
+    }
+
+    // Assembler view driven by step number (steps 18–21)
+    if (s >= 18 && s <= 21) {
+      setAssemblerView(true);  setAssemblerPhase(s - 18);
+    } else {
+      setAssemblerView(false); setAssemblerPhase(0);
     }
 
     // Compaction collapse animations (forward only)
