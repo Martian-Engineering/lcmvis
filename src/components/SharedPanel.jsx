@@ -175,8 +175,8 @@ const SharedPanel = forwardRef(function SharedPanel({
   const badgeText  = isTraditional ? 'TRADITIONAL' : 'LCM';
   const badgeColor = isTraditional ? 'var(--color-budget-over)' : 'var(--color-summary)';
 
-  // Context window collapses during tool steps; stays open for assembler steps
-  const ctxCollapsed = isLcm && lcmToolView;
+  // Context window collapses during tool steps and assembler steps
+  const ctxCollapsed = isLcm && (lcmToolView || lcmAssemblerView);
 
   // ── Animate each new item in ─────────────────────────────────────────────────
   // Items arrive one at a time via scene-side stagger, so this typically sees
