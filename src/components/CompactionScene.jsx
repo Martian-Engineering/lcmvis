@@ -117,7 +117,7 @@ const STEPS = [
   },
   {
     title: 'A Large File Arrives',
-    body: 'When you paste a large file into the conversation — a log dump, a codebase snapshot, a JSON export — LCM detects it automatically at ingestion. This log file is 28,500 tokens: more than the entire context budget of some models.',
+    body: 'When you paste a large file into the conversation — a log dump, a codebase snapshot, a JSON export — LCM detects it automatically at ingestion. This log file is 28,500 tokens: enough to crowd out dozens of turns of conversation history.',
   },
   {
     title: 'LCM Intercepts',
