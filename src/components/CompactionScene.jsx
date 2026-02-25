@@ -1,21 +1,17 @@
 /**
- * CompactionScene — scrollytelling orchestrator.
+ * CompactionScene — left-column narration for the LCM compaction section.
+ * Does NOT render a right panel; state is communicated to SharedPanel via
+ * the onStateChange callback.
  *
- * Structure (left column, top to bottom):
- *   Sections 0–8   Normal narration (80vh each, 100vh for section 0)
- *   Scrub section  220vh tall; sticky inner card; ScrollTrigger scrub drives
- *                  summary 3 and summary 4 appearing as the user scrolls
- *   Sections 9–13  Normal narration: condensation threshold, d1 pass,
- *                  bounded context, and tool stubs (describe/grep, expand)
- *
- * Right column stays sticky at 100vh throughout.
+ * Structure (top to bottom):
+ *   Section 0     Transition ("There's a better way")
+ *   Sections 1–8  Compaction narration (80vh each)
+ *   Scrub section 220vh; ScrollTrigger scrub drives summary 3 and 4
+ *   Sections 9–17 Condensation, bounded context, tool demos
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import ContextWindow from './ContextWindow';
-import DagPanel from './DagPanel';
-import ToolPanel from './ToolPanel';
 import Narration from './Narration';
 import {
   MESSAGES as M,
@@ -26,7 +22,6 @@ import {
 gsap.registerPlugin(ScrollTrigger);
 
 // ── Narration copy ──────────────────────────────────────────────────────────
-// Indices 0–8 are the compaction act; 9–11 are condensation; 12–16 are tool demos.
 const STEPS = [
   {
     title: 'There\'s a better way.',
@@ -64,7 +59,6 @@ const STEPS = [
     title: 'Second Compaction Pass',
     body: 'A second summary is created. The Summary DAG now has two summary nodes, each a dense slice of conversation history.',
   },
-  // Post-scrub: condensation act
   {
     title: 'Condensation Threshold',
     body: 'When enough summaries accumulate at the same depth — 4 in this case — LCM fires a condensation pass. They are synthesized into a single depth-1 node.',
@@ -103,7 +97,7 @@ const STEPS = [
   },
 ];
 
-const TOTAL_STEPS = STEPS.length; // 18
+const TOTAL_STEPS = STEPS.length;
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 const msgItem = (msg) => ({ type: 'message',           data: msg });
@@ -114,8 +108,7 @@ function sumTokens(items) {
   return items.reduce((acc, i) => acc + (i.data.tokens ?? 0), 0);
 }
 
-// Target state for each narration step (used for instant transitions and
-// as the final state after collapse animations complete).
+/** Target state for each narration step. */
 function itemsForStep(s) {
   switch (s) {
     case 0:  return { items: [], summaries: [] };
@@ -154,19 +147,12 @@ function itemsForStep(s) {
       ],
       summaries: [SUMMARY_1, SUMMARY_2],
     };
-    // Post-scrub states (summaries 3 and 4 already added by the scrub section)
     case 9:  return {
       items: [sumItem(SUMMARY_1),sumItem(SUMMARY_2),sumItem(SUMMARY_3),sumItem(SUMMARY_4), ftItem],
       summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4],
     };
-    case 10:
-    case 11:
-    case 12:
-    case 13:
-    case 14:
-    case 15:
-    case 16:
-    case 17: return {
+    case 10: case 11: case 12: case 13:
+    case 14: case 15: case 16: case 17: return {
       items: [sumItem(D1_SUMMARY), ftItem],
       summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4, D1_SUMMARY],
     };
@@ -175,34 +161,28 @@ function itemsForStep(s) {
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
-export default function CompactionScene() {
+export default function CompactionScene({ onStateChange, panelRef }) {
   const [step,        setStep]        = useState(0);
   const [items,       setItems]       = useState([]);
   const [summaries,   setSummaries]   = useState([]);
   const [compacting,  setCompacting]  = useState(false);
   const [fastForward, setFastForward] = useState(false);
 
-  const ctxWindowRef   = useRef(null);
-  const narrationRefs  = useRef([]);   // refs for sections 0–8 and 9–13
-  const scrubRef       = useRef(null); // the 220vh fast-forward div
-  const prevStepRef    = useRef(-1);
-  const prevItemIdsRef = useRef(new Set());
-  const collapseAnimRef = useRef(null);
+  const narrationRefs = useRef([]);
+  const scrubRef      = useRef(null);
+  const prevStepRef   = useRef(-1);
 
   // Tool visualization state (steps 12–17)
-  const [toolView,    setToolView]    = useState(null);  // null | 'describe' | 'grep' | 'expand'
-  const [expandPhase, setExpandPhase] = useState(0);     // 1..3 (driven by step, not timer)
+  const [toolView,    setToolView]    = useState(null);
+  const [expandPhase, setExpandPhase] = useState(0);
 
-  // Scrub milestone flags for summary 3 and 4 (reset when leaving scrub section backward)
+  // Scrub milestone flags
   const sum3Added = useRef(false);
   const sum4Added = useRef(false);
 
   const usedTokens = sumTokens(items);
 
-  // DAG nodes to highlight — driven by active tool view and expand phase.
-  // describe: highlights the node being inspected (d1).
-  // grep: hits span messages + both summary levels.
-  // expand: sub-agent walks d1 → summary → message group progressively.
+  // DAG highlight IDs driven by tool view and expand phase
   const dagHighlightIds = useMemo(() => {
     if (toolView === 'describe') return ['sum_d1_01'];
     if (toolView === 'grep')     return ['sum_d1_01', 'sum_01', 'msgs_sum_01'];
@@ -214,28 +194,31 @@ export default function CompactionScene() {
     return [];
   }, [toolView, expandPhase]);
 
-  // ── Collapse animation ──────────────────────────────────────────────────
-  const animateCollapse = useCallback((ids, onComplete) => {
-    const els = ids.map((id) => ctxWindowRef.current?.getItemEl(id)).filter(Boolean);
-    if (els.length === 0) { onComplete(); return; }
+  // Banner text for compaction alerts
+  const bannerText = step <= 5
+    ? '⚡  Compaction triggered — Turns 1–4 (2,485 tok) outside fresh tail exceed the 2,000-token threshold'
+    : '⚡  Compaction triggered — Turns 5–8 (2,430 tok) outside fresh tail exceed the 2,000-token threshold';
 
-    els.forEach((el) => gsap.set(el, { height: el.offsetHeight, overflow: 'hidden' }));
-    if (collapseAnimRef.current) collapseAnimRef.current.kill();
-
-    collapseAnimRef.current = gsap.to(els, {
-      height: 0, opacity: 0, paddingTop: 0, paddingBottom: 0, marginBottom: 0,
-      duration: 0.28,
-      stagger: { amount: 0.3, from: 'end' },
-      ease: 'power2.in',
-      onComplete: () => {
-        els.forEach((el) => gsap.set(el, { clearProps: 'all' }));
-        collapseAnimRef.current = null;
-        onComplete();
-      },
+  // ── Notify parent of state changes ──────────────────────────────────────────
+  useEffect(() => {
+    onStateChange?.({
+      step, items, summaries, usedTokens, compacting, fastForward,
+      showFreshTail: step >= 3 || fastForward,
+      toolView, expandPhase, dagHighlightIds, bannerText,
     });
-  }, []);
+  }, [step, items, summaries, usedTokens, compacting, fastForward,
+      toolView, expandPhase, dagHighlightIds, bannerText, onStateChange]);
 
-  // ── Apply step (instant for most; animated for compaction and d1 steps) ──
+  // ── Collapse animation (delegated to SharedPanel) ─────────────────────────
+  const animateCollapse = useCallback((ids, onComplete) => {
+    if (panelRef?.current?.animateCollapse) {
+      panelRef.current.animateCollapse(ids, onComplete);
+    } else {
+      onComplete();
+    }
+  }, [panelRef]);
+
+  // ── Apply step ──────────────────────────────────────────────────────────────
   const applyStep = useCallback((s) => {
     const prev = prevStepRef.current;
     prevStepRef.current = s;
@@ -243,19 +226,19 @@ export default function CompactionScene() {
     setFastForward(false);
     setCompacting(s === 4 || s === 7);
 
-    // Tool view and expand phase are driven directly by step number — no timers needed.
+    // Tool view driven by step number
     if (s === 12) {
       setToolView('describe'); setExpandPhase(0);
     } else if (s === 13) {
       setToolView('grep');     setExpandPhase(0);
     } else if (s === 14) {
-      setToolView('expand');   setExpandPhase(1);  // grant issued + sub-agent spawned + d1 read
+      setToolView('expand');   setExpandPhase(1);
     } else if (s === 15) {
-      setToolView('expand');   setExpandPhase(2);  // summary expanded + source messages fetched
+      setToolView('expand');   setExpandPhase(2);
     } else if (s === 16) {
-      setToolView('expand');   setExpandPhase(3);  // synthesis complete + answer returned
+      setToolView('expand');   setExpandPhase(3);
     } else if (s === 17) {
-      setToolView('expand');   setExpandPhase(3);  // same state, extra scroll step for reading
+      setToolView('expand');   setExpandPhase(3);
     } else {
       setToolView(null);       setExpandPhase(0);
     }
@@ -278,7 +261,7 @@ export default function CompactionScene() {
       return;
     }
 
-    // Condensation collapse animation (forward only: steps 9→10)
+    // Condensation collapse (forward only: 9→10)
     if (s === 10 && prev === 9) {
       animateCollapse(
         [SUMMARY_1.id, SUMMARY_2.id, SUMMARY_3.id, SUMMARY_4.id],
@@ -295,25 +278,7 @@ export default function CompactionScene() {
     setSummaries(t.summaries);
   }, [animateCollapse]);
 
-  // ── Stagger new items ────────────────────────────────────────────────────
-  useEffect(() => {
-    const currentIds = new Set(items.map((i) => i.data.id));
-    const newIds = [...currentIds].filter((id) => !prevItemIdsRef.current.has(id));
-    prevItemIdsRef.current = currentIds;
-    if (newIds.length === 0) return;
-
-    const frame = requestAnimationFrame(() => {
-      const els = newIds.map((id) => ctxWindowRef.current?.getItemEl(id)).filter(Boolean);
-      if (els.length === 0) return;
-      gsap.fromTo(els,
-        { opacity: 0, y: -14, scale: 0.95 },
-        { opacity: 1, y: 0, scale: 1, duration: 0.38, stagger: 0.07, ease: 'power2.out' }
-      );
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [items]);
-
-  // ── Normal narration ScrollTriggers (sections 0–8 and 9–13) ─────────────
+  // ── ScrollTriggers (narration sections) ───────────────────────────────────
   useEffect(() => {
     const triggers = narrationRefs.current.map((el, i) => {
       if (!el) return null;
@@ -328,7 +293,7 @@ export default function CompactionScene() {
     return () => triggers.forEach((t) => t?.kill());
   }, [applyStep]);
 
-  // ── Scrub section ScrollTrigger ──────────────────────────────────────────
+  // ── Scrub section ScrollTrigger ───────────────────────────────────────────
   useEffect(() => {
     const el = scrubRef.current;
     if (!el) return;
@@ -340,18 +305,16 @@ export default function CompactionScene() {
       scrub:   0.6,
 
       onEnter: () => {
-        // Start of fast-forward: reset to end-of-step-8 state + placeholder
         sum3Added.current = false;
         sum4Added.current = false;
         setFastForward(true);
-        setStep(-1); // not a numbered narration step
+        setStep(-1);
         setCompacting(false);
         setItems([sumItem(SUMMARY_1), sumItem(SUMMARY_2), ftItem]);
         setSummaries([SUMMARY_1, SUMMARY_2]);
       },
 
       onLeaveBack: () => {
-        // Scrolled back above the scrub section — revert to step 8
         sum3Added.current = false;
         sum4Added.current = false;
         setFastForward(false);
@@ -360,10 +323,7 @@ export default function CompactionScene() {
         setSummaries(t.summaries);
       },
 
-      onLeave: () => {
-        // Finished scrolling through — ensure all 4 leaves present, exit FF
-        setFastForward(false);
-      },
+      onLeave: () => { setFastForward(false); },
 
       onUpdate: (self) => {
         // Milestone at 40%: summary 3 appears
@@ -379,7 +339,6 @@ export default function CompactionScene() {
           });
         }
         if (self.progress < 0.4 && sum3Added.current) {
-          // Scrolled backward past milestone — remove summary 3 (and 4 if present)
           sum3Added.current = false;
           sum4Added.current = false;
           setSummaries([SUMMARY_1, SUMMARY_2]);
@@ -409,18 +368,11 @@ export default function CompactionScene() {
     return () => trigger.kill();
   }, []);
 
-  // ── Banner copy ───────────────────────────────────────────────────────────
-  const bannerText = step <= 5
-    ? '⚡  Compaction triggered — Turns 1–4 (2,485 tok) outside fresh tail exceed the 2,000-token threshold'
-    : '⚡  Compaction triggered — Turns 5–8 (2,430 tok) outside fresh tail exceed the 2,000-token threshold';
-
-  // ── Fast-forward card (sticky inside the scrub section) ──────────────────
+  // ── Fast-forward card (sticky inside the scrub section) ────────────────────
   function FastForwardCard() {
-    const newSummaryIds = [SUMMARY_3.id, SUMMARY_4.id];
     const summaryIds = summaries.map((s) => s.id);
     return (
       <div className="flex flex-col gap-4">
-        {/* Step dots */}
         <div className="flex items-center gap-2">
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
             <div key={i} style={{
@@ -429,7 +381,6 @@ export default function CompactionScene() {
             }} className="rounded-full" />
           ))}
         </div>
-        {/* Badge */}
         <div className="flex items-center gap-2">
           <span style={{
             color: 'var(--color-summary)',
@@ -445,7 +396,6 @@ export default function CompactionScene() {
           Each new cohort of messages outside the fresh tail automatically
           triggers another compaction pass. Watch the DAG grow as you scroll.
         </p>
-        {/* Summary accumulation tracker */}
         <div className="flex flex-col gap-1.5">
           {[SUMMARY_3, SUMMARY_4].map((s) => {
             const present = summaryIds.includes(s.id);
@@ -464,147 +414,67 @@ export default function CompactionScene() {
     );
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ── Render (left narration column only) ────────────────────────────────────
   return (
-    <div className="relative flex" style={{ minHeight: '100vh' }}>
-
-      {/* ── Left: scrollable narration ──────────────────────────────────── */}
-      <div className="flex flex-col" style={{ width: '45%' }}>
-
-        {/* Section 0 — transition from Traditional to LCM */}
-        <div
-          ref={(el) => { narrationRefs.current[0] = el; }}
-          className="flex items-center"
-          style={{ minHeight: '100vh', padding: '0 3.5rem' }}
-        >
-          <div className="flex flex-col gap-4">
-            <span
-              style={{ color: 'var(--color-summary)', borderColor: 'var(--color-summary)' }}
-              className="self-start rounded border px-2 py-0.5 text-[10px] font-bold tracking-widest"
-            >
-              ENTER LCM
-            </span>
-            <Narration title={STEPS[0].title} body={STEPS[0].body} step={0} totalSteps={TOTAL_STEPS} />
-          </div>
-        </div>
-
-        {/* Sections 1–8 */}
-        {STEPS.slice(1, 9).map((s, i) => {
-          const idx = i + 1;
-          return (
-            <div
-              key={idx}
-              ref={(el) => { narrationRefs.current[idx] = el; }}
-              className="flex items-center"
-              style={{ minHeight: '80vh', padding: '0 3.5rem' }}
-            >
-              <Narration title={s.title} body={s.body} step={idx} totalSteps={TOTAL_STEPS} />
-            </div>
-          );
-        })}
-
-        {/* Fast-forward scrub section */}
-        <div
-          ref={scrubRef}
-          style={{ height: '220vh', position: 'relative', padding: '0 3.5rem' }}
-        >
-          <div style={{ position: 'sticky', top: '38vh' }}>
-            <FastForwardCard />
-          </div>
-        </div>
-
-        {/* Sections 9–17 */}
-        {STEPS.slice(9).map((s, i) => {
-          const globalIdx = i + 9;
-          return (
-            <div
-              key={globalIdx}
-              ref={(el) => { narrationRefs.current[globalIdx] = el; }}
-              className="flex items-center"
-              style={{ minHeight: '80vh', padding: '0 3.5rem' }}
-            >
-              <Narration title={s.title} body={s.body} step={globalIdx} totalSteps={TOTAL_STEPS} />
-            </div>
-          );
-        })}
-
-        <div style={{ height: '40vh' }} />
-      </div>
-
-      {/* ── Right: sticky visualization ─────────────────────────────────── */}
-      <div style={{
-        width: '55%', position: 'sticky', top: 0, height: '100vh',
-        padding: '1.25rem 2.5rem 1.25rem 1rem',
-        display: 'flex', flexDirection: 'column', gap: '10px',
-      }}>
-        {/*
-         * Compaction alert banner — collapses to zero height when not compacting
-         * so it doesn't waste layout space during the tool demonstration steps.
-         */}
-        <div style={{
-          background: 'rgba(240,136,62,0.13)',
-          border: '1px solid var(--color-summary)',
-          color: 'var(--color-summary)',
-          maxHeight: compacting ? '60px' : 0,
-          overflow: 'hidden',
-          opacity: compacting ? 1 : 0,
-          transition: 'max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease',
-          pointerEvents: 'none',
-          flexShrink: 0,
-        }} className="rounded-lg px-3 py-2 text-xs font-semibold">
-          {bannerText}
-        </div>
-
-        {/*
-         * Layout modes — context window always sits at the top of the flex column:
-         *
-         *   Normal  (steps 0–11): ContextWindow fills remaining space; DAG at 40%
-         *   Tool    (steps 12–17): ContextWindow collapses to 0 (slides upward);
-         *                          DAG expands to 48%; ToolPanel slides in at 44%
-         *
-         * Using maxHeight + opacity on the context window for the collapse animation
-         * since CSS cannot transition height: auto → height: 0 directly.
-         */}
-
-        {/* Context window — always at top, collapses when tool steps are active */}
-        <div style={{
-          flexShrink: 0,
-          flex: toolView ? '0 0 auto' : '1 1 auto',
-          maxHeight: toolView ? 0 : '70vh',
-          minHeight: 0,
-          overflow: 'hidden',
-          opacity: toolView ? 0 : 1,
-          transition: 'max-height 0.55s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease',
-        }}>
-          <ContextWindow
-            ref={ctxWindowRef}
-            items={items}
-            usedTokens={usedTokens}
-            fastForward={fastForward}
-            showFreshTail={step >= 3 || fastForward}
-          />
-        </div>
-
-        {/* DAG panel — slides in when first summary appears; expands in tool mode */}
-        <div style={{
-          flexShrink: 0,
-          height: summaries.length > 0 ? (toolView ? '48%' : '40%') : 0,
-          overflow: 'hidden',
-          transition: 'height 0.55s cubic-bezier(0.16, 1, 0.3, 1)',
-        }}>
-          {summaries.length > 0 && <DagPanel summaries={summaries} highlightIds={dagHighlightIds} />}
-        </div>
-
-        {/* Tool panel — slides in when a tool step is active (44% gives ample real estate) */}
-        <div style={{
-          flexShrink: 0,
-          height: toolView ? '44%' : 0,
-          overflow: 'hidden',
-          transition: 'height 0.55s cubic-bezier(0.16, 1, 0.3, 1)',
-        }}>
-          {toolView && <ToolPanel view={toolView} expandPhase={expandPhase} />}
+    <>
+      {/* Section 0 — transition from Traditional to LCM */}
+      <div
+        ref={(el) => { narrationRefs.current[0] = el; }}
+        className="flex items-center"
+        style={{ minHeight: '100vh', padding: '0 3.5rem' }}
+      >
+        <div className="flex flex-col gap-4">
+          <span
+            style={{ color: 'var(--color-summary)', borderColor: 'var(--color-summary)' }}
+            className="self-start rounded border px-2 py-0.5 text-[10px] font-bold tracking-widest"
+          >
+            ENTER LCM
+          </span>
+          <Narration title={STEPS[0].title} body={STEPS[0].body} step={0} totalSteps={TOTAL_STEPS} />
         </div>
       </div>
-    </div>
+
+      {/* Sections 1–8 */}
+      {STEPS.slice(1, 9).map((s, i) => {
+        const idx = i + 1;
+        return (
+          <div
+            key={idx}
+            ref={(el) => { narrationRefs.current[idx] = el; }}
+            className="flex items-center"
+            style={{ minHeight: '80vh', padding: '0 3.5rem' }}
+          >
+            <Narration title={s.title} body={s.body} step={idx} totalSteps={TOTAL_STEPS} />
+          </div>
+        );
+      })}
+
+      {/* Fast-forward scrub section */}
+      <div
+        ref={scrubRef}
+        style={{ height: '220vh', position: 'relative', padding: '0 3.5rem' }}
+      >
+        <div style={{ position: 'sticky', top: '38vh' }}>
+          <FastForwardCard />
+        </div>
+      </div>
+
+      {/* Sections 9–17 */}
+      {STEPS.slice(9).map((s, i) => {
+        const globalIdx = i + 9;
+        return (
+          <div
+            key={globalIdx}
+            ref={(el) => { narrationRefs.current[globalIdx] = el; }}
+            className="flex items-center"
+            style={{ minHeight: '80vh', padding: '0 3.5rem' }}
+          >
+            <Narration title={s.title} body={s.body} step={globalIdx} totalSteps={TOTAL_STEPS} />
+          </div>
+        );
+      })}
+
+      <div style={{ height: '40vh' }} />
+    </>
   );
 }
