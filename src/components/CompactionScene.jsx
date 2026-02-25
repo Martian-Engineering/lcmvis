@@ -101,11 +101,11 @@ const STEPS = [
   },
   {
     title: 'Two Zones',
-    body: 'The context budget splits into two regions: an evictable prefix filled by summaries — newest retained, oldest dropped first if space runs out — and a protected fresh tail that\'s always appended unconditionally. The model always has verbatim recency.',
+    body: 'The assembled context splits into two regions: a summary prefix drawn from the DAG, and a protected fresh tail that\'s always appended unconditionally — regardless of budget. The model always has verbatim recency for recent turns.',
   },
   {
-    title: 'Eviction Without Deletion',
-    body: 'If summaries overflow the budget, the oldest are silently dropped from the assembled context — but they\'re never deleted from the DAG. They remain fully accessible via lcm_expand_query. The main context stays lean; nothing is truly lost.',
+    title: 'Summaries as Structured Messages',
+    body: 'Summaries aren\'t injected as plain text — they arrive as user messages wrapped in XML. The model gets the summary ID, depth, time range, and descendant count as attributes. The "Expand for details about:" footer tells the model exactly what was compressed away, so it knows when to call lcm_expand_query.',
   },
   {
     title: 'The Model\'s View',
