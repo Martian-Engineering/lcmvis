@@ -316,15 +316,7 @@ export default function TraditionalScene() {
 
           {/* Token budget bar */}
           <div className="shrink-0">
-            <TokenBudget used={usedTokens} total={TRAD_BUDGET} />
-          </div>
-
-          {/* Threshold marker label */}
-          <div className="shrink-0 flex items-center gap-1.5" style={{ marginTop: '-6px' }}>
-            <div style={{ width: `${(TRAD_THRESHOLD / TRAD_BUDGET) * 100}%` }} />
-            <span style={{ color: 'var(--color-muted)' }} className="text-[9px]">
-              ↑ threshold ({Math.round(TRAD_THRESHOLD / TRAD_BUDGET * 100)}%)
-            </span>
+            <TokenBudget used={usedTokens} total={TRAD_BUDGET} threshold={TRAD_THRESHOLD / TRAD_BUDGET} />
           </div>
 
           <div style={{ borderColor: 'var(--color-border)' }} className="border-t shrink-0" />

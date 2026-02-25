@@ -4,7 +4,7 @@
  */
 import { forwardRef } from 'react';
 
-const TokenBudget = forwardRef(function TokenBudget({ used, total, label }, ref) {
+const TokenBudget = forwardRef(function TokenBudget({ used, total, label, threshold }, ref) {
   const pct = Math.min(used / total, 1);
   const pctDisplay = Math.round(pct * 100);
 
@@ -40,15 +40,17 @@ const TokenBudget = forwardRef(function TokenBudget({ used, total, label }, ref)
         />
       </div>
 
-      {/* Threshold marker at 75% */}
-      <div className="relative mt-0.5 h-3">
-        <div
-          style={{ left: '75%', color: 'var(--color-muted)' }}
-          className="absolute -translate-x-1/2 text-[9px]"
-        >
-          ▲ threshold
+      {/* Threshold marker — only shown when a threshold value is provided */}
+      {threshold != null && (
+        <div className="relative mt-0.5 h-3">
+          <div
+            style={{ left: `${Math.round(threshold * 100)}%`, color: 'var(--color-muted)' }}
+            className="absolute -translate-x-1/2 text-[9px]"
+          >
+            ▲ threshold
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 });
