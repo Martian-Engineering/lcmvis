@@ -16,7 +16,6 @@ import TokenBudget from './TokenBudget';
 import DagPanel from './DagPanel';
 import ToolPanel from './ToolPanel';
 import AssemblerPanel from './AssemblerPanel';
-import LifecyclePanel from './LifecyclePanel';
 import { TOTAL_BUDGET, FRESH_TAIL_COUNT } from '../data/conversation';
 
 // ── Traditional-mode constants ──────────────────────────────────────────────
@@ -163,8 +162,7 @@ const SharedPanel = forwardRef(function SharedPanel({
   const lcmBannerText       = lcmState?.bannerText ?? '';
   const lcmAssemblerView    = lcmState?.assemblerView ?? false;
   const lcmAssemblerPhase   = lcmState?.assemblerPhase ?? 0;
-  const lcmLifecycleView    = lcmState?.lifecycleView ?? false;
-  const lcmLifecyclePhase   = lcmState?.lifecyclePhase ?? 0;
+  const lcmDagPromptLabels  = lcmState?.dagPromptLabels ?? false;
 
   // Unified display values for the context window
   const usedTokens  = isTraditional ? tradUsedTokens : lcmUsedTokens;
@@ -178,8 +176,8 @@ const SharedPanel = forwardRef(function SharedPanel({
   const badgeText  = isTraditional ? 'TRADITIONAL' : 'LCM';
   const badgeColor = isTraditional ? 'var(--color-budget-over)' : 'var(--color-summary)';
 
-  // Context window collapses during tool, assembler, and lifecycle steps
-  const ctxCollapsed = isLcm && (lcmToolView || lcmAssemblerView || lcmLifecycleView);
+  // Context window collapses during tool and assembler steps
+  const ctxCollapsed = isLcm && (lcmToolView || lcmAssemblerView);
 
   // ── Animate each new item in ─────────────────────────────────────────────────
   // Items arrive one at a time via scene-side stagger, so this typically sees
@@ -401,14 +399,18 @@ const SharedPanel = forwardRef(function SharedPanel({
       {/* ── DAG panel (LCM only — collapses during assembler steps) ────────── */}
       <div style={{
         flexShrink: 0,
-        height: isLcm && lcmSummaries.length > 0 && !lcmAssemblerView && !lcmLifecycleView
+        height: isLcm && lcmSummaries.length > 0 && !lcmAssemblerView
           ? (lcmToolView ? '48%' : '40%')
           : 0,
         overflow: 'hidden',
         transition: 'height 0.55s cubic-bezier(0.16, 1, 0.3, 1)',
       }}>
         {isLcm && lcmSummaries.length > 0 && (
-          <DagPanel summaries={lcmSummaries} highlightIds={lcmDagHighlightIds} />
+          <DagPanel
+            summaries={lcmSummaries}
+            highlightIds={lcmDagHighlightIds}
+            showPromptLabels={lcmDagPromptLabels}
+          />
         )}
       </div>
 
@@ -433,18 +435,6 @@ const SharedPanel = forwardRef(function SharedPanel({
       }}>
         {isLcm && lcmAssemblerView && (
           <AssemblerPanel phase={lcmAssemblerPhase} />
-        )}
-      </div>
-
-      {/* ── Lifecycle panel (LCM only — slides in for lifecycle steps 22–24) ── */}
-      <div style={{
-        flexShrink: 0,
-        height: isLcm && lcmLifecycleView ? '78%' : 0,
-        overflow: 'hidden',
-        transition: 'height 0.55s cubic-bezier(0.16, 1, 0.3, 1)',
-      }}>
-        {isLcm && lcmLifecycleView && (
-          <LifecyclePanel phase={lcmLifecyclePhase} />
         )}
       </div>
 

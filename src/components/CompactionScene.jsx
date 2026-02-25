@@ -116,16 +116,20 @@ const STEPS = [
     body: 'This is what the model receives each turn: a compact summary of all prior history, followed by the verbatim recent conversation. Full coverage. Bounded cost. This is what makes long conversations tractable.',
   },
   {
-    title: 'The DAG Grows Deep',
-    body: 'As the conversation accumulates, compaction runs at every depth. Sixteen leaf summaries have formed across 64 turns. Four depth-1 condensations synthesized them. A single depth-2 node now covers the whole arc — 128 messages in 840 tokens.',
+    title: 'The Cycle Continues',
+    body: 'As more turns accumulate, LCM keeps running. Each new cohort outside the fresh tail triggers a leaf pass. Each group of four leaf summaries triggers a depth-1 condensation. The DAG grows deeper.',
   },
   {
-    title: 'Depth-Aware Summarization',
-    body: 'Each depth runs a different prompt. Leaf summaries preserve specifics: decisions, rationale, technical details. Depth-1 distills the arc: outcomes, what evolved, current state. Depth-2 produces a durable narrative — decisions still in effect, completed milestones — the kind of context that stays useful long after the details fade.',
+    title: 'Depth-1 Condensations',
+    body: 'Three more depth-1 condensations have fired — one for each new block of turns. Four depth-1 nodes now cover the full arc. LCM is about to do something it has never done in this conversation before.',
   },
   {
-    title: 'A Forever Conversation',
-    body: 'The DAG can grow without bound — depth-3, depth-4, each layer more abstract and more durable. The fresh tail anchors the present. The model always has the full arc in bounded context. Nothing is ever discarded. This is what makes genuinely long-running collaborations possible.',
+    title: 'Depth-2 Condensation',
+    body: 'Four depth-1 nodes at the same depth — the condensation threshold is crossed again. LCM fires a depth-2 pass, synthesizing all four into a single node covering 64 turns. The DAG is now three levels deep.',
+  },
+  {
+    title: 'Depth-Aware Prompts',
+    body: 'Each depth runs a different prompt. Leaf summaries capture specifics: decisions, rationale, exact technical details. Depth-1 distills the arc: what evolved, outcomes, current state. Depth-2 produces a durable narrative — decisions still in effect and a milestone timeline — the kind of context that stays useful for weeks.',
   },
 ];
 
@@ -185,11 +189,21 @@ function itemsForStep(s) {
     };
     case 10: case 11: case 12: case 13:
     case 14: case 15: case 16: case 17:
-    // Assembler and lifecycle steps: self-contained panels; context window stays frozen.
-    case 22: case 23: case 24:
+    // Assembler steps: self-contained panels; context window stays frozen.
     case 18: case 19: case 20: case 21: return {
       items: [sumItem(D1_SUMMARY), ftItem],
       summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4, D1_SUMMARY],
+    };
+    // Section C steps: DAG grows; context window stays frozen at D1_SUMMARY + ftItem.
+    case 22: return {
+      items: [sumItem(D1_SUMMARY), ftItem],
+      summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4,
+                  D1_SUMMARY, D1_SUMMARY_2, D1_SUMMARY_3, D1_SUMMARY_4],
+    };
+    case 23: case 24: case 25: return {
+      items: [sumItem(D1_SUMMARY), ftItem],
+      summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4,
+                  D1_SUMMARY, D1_SUMMARY_2, D1_SUMMARY_3, D1_SUMMARY_4, D2_SUMMARY],
     };
     default: return { items: [], summaries: [] };
   }
@@ -216,9 +230,8 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
   const [assemblerView,  setAssemblerView]  = useState(false);
   const [assemblerPhase, setAssemblerPhase] = useState(0);
 
-  // Lifecycle visualization state (steps 22–24)
-  const [lifecycleView,  setLifecycleView]  = useState(false);
-  const [lifecyclePhase, setLifecyclePhase] = useState(0);
+  // DAG prompt labels state (steps 24–25)
+  const [dagPromptLabels, setDagPromptLabels] = useState(false);
 
 
   // Scrub milestone flags
@@ -251,12 +264,12 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
       showFreshTail: step >= 3 || fastForward,
       toolView, expandPhase, dagHighlightIds, bannerText,
       assemblerView, assemblerPhase,
-      lifecycleView, lifecyclePhase,
+      dagPromptLabels,
     });
   }, [step, items, summaries, usedTokens, compacting, fastForward,
       toolView, expandPhase, dagHighlightIds, bannerText,
       assemblerView, assemblerPhase,
-      lifecycleView, lifecyclePhase, onStateChange]);
+      dagPromptLabels, onStateChange]);
 
   // ── Collapse animation (delegated to SharedPanel) ─────────────────────────
   const animateCollapse = useCallback((ids, onComplete) => {
@@ -303,11 +316,11 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
       setAssemblerView(false); setAssemblerPhase(0);
     }
 
-    // Lifecycle view driven by step number (steps 22–24)
-    if (s >= 22 && s <= 24) {
-      setLifecycleView(true);  setLifecyclePhase(s === 22 ? 0 : 1);
+    // DAG prompt labels (steps 24–25)
+    if (s >= 24 && s <= 25) {
+      setDagPromptLabels(true);
     } else {
-      setLifecycleView(false); setLifecyclePhase(0);
+      setDagPromptLabels(false);
     }
 
     // Compaction collapse animations (forward only)

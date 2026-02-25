@@ -7,17 +7,30 @@
  *     summary nodes (orange)       ← D0_Y
  *     message groups (blue dashed) ← MSG_Y
  *
- *   With d1 (3-tier layout):
+ *   Single d1 (3-tier layout):
  *     d1 node (red-pink, wide)     ← D1_Y
  *     summary nodes                ← D0_Y_SHIFTED
  *     message groups               ← MSG_Y_WITH_D1
  *
- * The SVG uses viewBox + width="100%" so it scales to fit the panel.
+ *   Multiple d1 nodes (multi-D1 layout):
+ *     d1 nodes in columns          ← D1_Y
+ *     (D0 and messages not shown)
+ *
+ *   D2 present (D2 + multi-D1 layout):
+ *     d2 node (wide, spanning all d1 columns) ← D2_Y
+ *     d1 nodes in columns                     ← D1_Y_BELOW_D2
+ *
+ * The SVG uses viewBox + width so it scales to fit the panel.
  * New summary nodes animate in via GSAP back.out.
- * The d1 node triggers a three-phase animation:
+ * The first d1 node triggers a three-phase animation:
  *   1. summary rects pulse (stroke brightens)
  *   2. d1 group scales in
  *   3. edges from d1 → each summary draw in via strokeDashoffset
+ * Additional d1 nodes scale in individually (no pulse, no edges).
+ * The d2 node triggers a three-phase animation:
+ *   1. d1 rects pulse (stroke brightens)
+ *   2. d2 group scales in
+ *   3. edges from d2 → each d1 draw in via strokeDashoffset
  */
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import gsap from 'gsap';
@@ -36,37 +49,68 @@ const MSG_W   = 144;
 const MSG_H   = 42;
 const MSG_Y   = D0_Y + D0_H + 32;  // gap between summary and message group
 
-// d1 node
+// d1 node (single-d1 layout — wide, centered)
 const D1_W    = 220;
 const D1_H    = 64;
 const D1_Y    = 8;
 
-// Summary position when d1 is present (shifted down to make room)
+// Summary position when single d1 is present (shifted down to make room)
 const D0_Y_SHIFTED = D1_Y + D1_H + 32;
 
-// Message group y when d1 is present (third tier, below shifted summaries)
+// Message group y when single d1 is present (third tier, below shifted summaries)
 const MSG_Y_WITH_D1 = D0_Y_SHIFTED + D0_H + 32;
 
-// SVG heights
+// SVG heights for 2-tier and 3-tier (single-d1) layouts
 const SVG_H_NO_D1   = MSG_Y + MSG_H + 12;
 const SVG_H_WITH_D1 = MSG_Y_WITH_D1 + MSG_H + 12;
 
+// d2 node dimensions
+const D2_H          = 64;
+const D2_Y          = 8;
+
+// D1 row y-position when d2 is present (below d2 node with gap)
+const D1_Y_BELOW_D2 = D2_Y + D2_H + 28;
+
+// SVG heights for multi-d1 and d2+d1 layouts
+const SVG_H_MULTI_D1  = D1_Y + D1_H + 12;        // d1 row only
+const SVG_H_D2_D1     = D1_Y_BELOW_D2 + D1_H + 12; // d2 + d1 rows
+
+// ── Prompt label descriptions by depth ──────────────────────────────────────
+const PROMPT_LABELS = {
+  2: { color: 'var(--color-budget-over)', text: 'Durable narrative: decisions in effect, completed work, milestone timeline' },
+  1: { color: 'var(--color-summary-d1)',  text: 'Arc distillation: outcomes, what evolved, current state' },
+  0: { color: 'var(--color-summary)',     text: 'Leaf summary: exact decisions, rationale, technical details' },
+};
+
 // ── Component ───────────────────────────────────────────────────────────────
-export default function DagPanel({ summaries, highlightIds = [] }) {
+export default function DagPanel({ summaries, highlightIds = [], showPromptLabels = false }) {
   const d0Nodes = summaries.filter((s) => s.depth === 0);
   const d1Nodes = summaries.filter((s) => s.depth === 1);
+  const d2Nodes = summaries.filter((s) => s.depth === 2);
   const hasD1   = d1Nodes.length > 0;
+  const hasD2   = d2Nodes.length > 0;
 
-  // Refs for GSAP
+  // Multi-D1 layout: more than one d1 OR d2 present
+  const multiD1 = d1Nodes.length > 1 || hasD2;
+
+  // Refs for GSAP — D0
   const d0GroupRefs = useRef({});  // summary <g> elements (for scale-in)
   const d0RectRefs  = useRef({});  // summary <rect> elements (for pulse)
-  const d1GroupRef  = useRef(null);
-  const d1EdgeRefs  = useRef({});  // paths from d1 → each summary
+
+  // Refs for GSAP — D1
+  const d1GroupRefs = useRef({});  // d1 <g> elements, keyed by d1.id
+  const d1RectRefs  = useRef({});  // d1 <rect> elements, keyed by d1.id (for pulse when d2 fires)
+  const d1EdgeRefs  = useRef({});  // paths d1 → each d0, keyed by d0.id (single-d1 compat case)
+
+  // Refs for GSAP — D2
+  const d2GroupRef  = useRef(null);
+  const d2EdgeRefs  = useRef({});  // paths d2 → each d1, keyed by d1.id
 
   const prevD0CountRef = useRef(0);
   const prevD1CountRef = useRef(0);
+  const prevD2CountRef = useRef(0);
 
-  // ── Animate newly added summary nodes ───────────────────────────────────
+  // ── Animate newly added D0 summary nodes ────────────────────────────────
   useEffect(() => {
     const incoming = d0Nodes.slice(prevD0CountRef.current);
     prevD0CountRef.current = d0Nodes.length;
@@ -82,44 +126,110 @@ export default function DagPanel({ summaries, highlightIds = [] }) {
     });
   }, [d0Nodes]);
 
-  // ── Animate d1 node appearing (three-phase) ──────────────────────────────
+  // ── Animate d1 nodes appearing ──────────────────────────────────────────
   useLayoutEffect(() => {
     if (d1Nodes.length === 0) {
       prevD1CountRef.current = 0;
       return;
     }
     if (d1Nodes.length <= prevD1CountRef.current) return;
+
+    const newD1s = d1Nodes.slice(prevD1CountRef.current);
     prevD1CountRef.current = d1Nodes.length;
 
-    // Phase 1: pulse all summary rects
-    const d0Rects = d0Nodes
-      .map((s) => d0RectRefs.current[s.id])
+    if (d1Nodes.length === 1) {
+      // First D1: three-phase animation (pulse D0 rects → D1 scales in → edges)
+      const d0Rects = d0Nodes
+        .map((s) => d0RectRefs.current[s.id])
+        .filter(Boolean);
+
+      gsap.timeline()
+        .to(d0Rects, {
+          attr: { stroke: '#ffffff', strokeWidth: 2.5 },
+          duration: 0.18,
+          stagger: 0.04,
+          ease: 'power2.out',
+        })
+        .to(d0Rects, {
+          attr: { stroke: 'var(--color-summary)', strokeWidth: 1 },
+          duration: 0.18,
+          stagger: 0.04,
+          ease: 'power2.in',
+        })
+        // Phase 2: D1 node scales in
+        .fromTo(
+          d1GroupRefs.current[d1Nodes[0].id],
+          { opacity: 0, scale: 0.6, transformOrigin: '50% 0%' },
+          { opacity: 1, scale: 1, duration: 0.55, ease: 'back.out(1.6)' },
+          '-=0.1'
+        )
+        // Phase 3: draw in each d1→d0 edge
+        .add(() => {
+          d0Nodes.forEach((node, i) => {
+            const path = d1EdgeRefs.current[node.id];
+            if (!path) return;
+            const len = path.getTotalLength();
+            gsap.set(path, { strokeDasharray: len, strokeDashoffset: len, opacity: 1 });
+            gsap.to(path, {
+              strokeDashoffset: 0,
+              duration: 0.35,
+              delay: i * 0.07,
+              ease: 'power2.out',
+            });
+          });
+        }, '-=0.15');
+    } else {
+      // Additional D1 nodes: scale each in individually, no pulse or edges
+      newD1s.forEach((d1, idx) => {
+        const el = d1GroupRefs.current[d1.id];
+        if (!el) return;
+        gsap.fromTo(
+          el,
+          { opacity: 0, scale: 0.75, transformOrigin: '50% 50%' },
+          { opacity: 1, scale: 1, duration: 0.5, delay: idx * 0.1, ease: 'back.out(1.4)' }
+        );
+      });
+    }
+  }, [d1Nodes, d0Nodes]);
+
+  // ── Animate D2 node appearing (three-phase) ──────────────────────────────
+  useLayoutEffect(() => {
+    if (d2Nodes.length === 0) {
+      prevD2CountRef.current = 0;
+      return;
+    }
+    if (d2Nodes.length <= prevD2CountRef.current) return;
+    prevD2CountRef.current = d2Nodes.length;
+
+    // Phase 1: pulse all D1 rects
+    const d1Rects = d1Nodes
+      .map((d1) => d1RectRefs.current[d1.id])
       .filter(Boolean);
 
     gsap.timeline()
-      .to(d0Rects, {
+      .to(d1Rects, {
         attr: { stroke: '#ffffff', strokeWidth: 2.5 },
         duration: 0.18,
         stagger: 0.04,
         ease: 'power2.out',
       })
-      .to(d0Rects, {
-        attr: { stroke: 'var(--color-summary)', strokeWidth: 1 },
+      .to(d1Rects, {
+        attr: { stroke: 'var(--color-summary-d1)', strokeWidth: 1 },
         duration: 0.18,
         stagger: 0.04,
         ease: 'power2.in',
       })
-      // Phase 2: d1 node scales in
+      // Phase 2: D2 group scales in
       .fromTo(
-        d1GroupRef.current,
+        d2GroupRef.current,
         { opacity: 0, scale: 0.6, transformOrigin: '50% 0%' },
         { opacity: 1, scale: 1, duration: 0.55, ease: 'back.out(1.6)' },
         '-=0.1'
       )
-      // Phase 3: draw in each edge
+      // Phase 3: draw in each d2→d1 edge
       .add(() => {
-        d0Nodes.forEach((node, i) => {
-          const path = d1EdgeRefs.current[node.id];
+        d1Nodes.forEach((d1, i) => {
+          const path = d2EdgeRefs.current[d1.id];
           if (!path) return;
           const len = path.getTotalLength();
           gsap.set(path, { strokeDasharray: len, strokeDashoffset: len, opacity: 1 });
@@ -131,15 +241,177 @@ export default function DagPanel({ summaries, highlightIds = [] }) {
           });
         });
       }, '-=0.15');
-  }, [d1Nodes, d0Nodes]);
+  }, [d2Nodes, d1Nodes]);
 
   // ── SVG geometry ──────────────────────────────────────────────────────────
+
+  // Decide which layout to use
+  if (multiD1) {
+    // Multi-D1 or D2+D1 layout
+    const d1RowY = hasD2 ? D1_Y_BELOW_D2 : D1_Y;
+    const svgW   = X_PAD * 2 + d1Nodes.length * COL_W;
+    const svgH   = hasD2 ? SVG_H_D2_D1 : SVG_H_MULTI_D1;
+
+    // D2 node geometry: spans all D1 columns
+    const d2X = X_PAD;
+    const d2W = d1Nodes.length * COL_W - (COL_W - NODE_W);
+
+    // Which depths are present (for prompt labels)
+    const depthsPresent = new Set(summaries.map((s) => s.depth));
+
+    return (
+      <div
+        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+        className="rounded-xl p-4 flex flex-col gap-2 h-full"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between shrink-0">
+          <h3 style={{ color: 'var(--color-text)' }} className="text-xs font-bold uppercase tracking-widest m-0">
+            Summary DAG
+          </h3>
+          <span style={{ color: 'var(--color-muted)' }} className="text-[10px]">
+            {d1Nodes.length} d1
+            {hasD2 ? ` · ${d2Nodes.length} d2` : ''}
+          </span>
+        </div>
+
+        {/* SVG */}
+        <div className="flex-1 flex items-start overflow-x-auto min-h-0 pt-1">
+          <svg
+            viewBox={`0 0 ${svgW} ${svgH}`}
+            width={svgW}
+            height={svgH}
+            style={{ display: 'block', overflow: 'visible' }}
+          >
+            {/* ── D2 node ─────────────────────────────────────────── */}
+            {hasD2 && d2Nodes.map((d2) => (
+              <g key={d2.id} ref={d2GroupRef} style={{ opacity: 0 }}>
+                <rect
+                  x={d2X} y={D2_Y}
+                  width={d2W} height={D2_H}
+                  rx={7}
+                  fill="rgba(255,123,114,0.12)"
+                  stroke="var(--color-budget-over)"
+                  strokeWidth={1.5}
+                />
+                <text x={d2X + 10} y={D2_Y + 16}
+                  fill="var(--color-budget-over)"
+                  fontSize={9} fontWeight="bold" fontFamily="monospace"
+                >
+                  DEPTH 2 · {d2.tokens} tok
+                </text>
+                <text x={d2X + 10} y={D2_Y + 30}
+                  fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
+                >
+                  {d2.id}
+                </text>
+                <text x={d2X + 10} y={D2_Y + 44}
+                  fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
+                >
+                  {d2.timeRange} · ↳ {d2.descendantCount} msgs
+                </text>
+              </g>
+            ))}
+
+            {/* ── D2→D1 edges (drawn via strokeDashoffset, start invisible) ── */}
+            {hasD2 && d1Nodes.map((d1, i) => {
+              const d1ColX   = X_PAD + i * COL_W;
+              const d1NodeCX = d1ColX + NODE_W / 2;
+              const d2Path = [
+                `M ${d1NodeCX} ${D2_Y + D2_H}`,
+                `C ${d1NodeCX} ${D2_Y + D2_H + 14}`,
+                `  ${d1NodeCX} ${d1RowY - 14}`,
+                `  ${d1NodeCX} ${d1RowY}`,
+              ].join(' ');
+              return (
+                <path
+                  key={`d2edge-${d1.id}`}
+                  ref={(el) => { d2EdgeRefs.current[d1.id] = el; }}
+                  d={d2Path}
+                  stroke="var(--color-budget-over)"
+                  strokeWidth={1.5}
+                  fill="none"
+                  opacity={0}
+                />
+              );
+            })}
+
+            {/* ── D1 nodes in columns ──────────────────────────────── */}
+            {d1Nodes.map((d1, i) => {
+              const colX = X_PAD + i * COL_W;
+              return (
+                <g
+                  key={d1.id}
+                  ref={(el) => { d1GroupRefs.current[d1.id] = el; }}
+                  style={{ opacity: 0 }}
+                >
+                  <rect
+                    ref={(el) => { d1RectRefs.current[d1.id] = el; }}
+                    x={colX} y={d1RowY}
+                    width={NODE_W} height={D1_H}
+                    rx={7}
+                    fill="rgba(255,123,114,0.10)"
+                    stroke="var(--color-summary-d1)"
+                    strokeWidth={1}
+                  />
+                  <text x={colX + 10} y={d1RowY + 16}
+                    fill="var(--color-summary-d1)"
+                    fontSize={9} fontWeight="bold" fontFamily="monospace"
+                  >
+                    DEPTH 1 · {d1.tokens} tok
+                  </text>
+                  <text x={colX + 10} y={d1RowY + 30}
+                    fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
+                  >
+                    {d1.id}
+                  </text>
+                  <text x={colX + 10} y={d1RowY + 44}
+                    fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
+                  >
+                    {d1.timeRange} · ↳ {d1.descendantCount} msgs
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+
+        {/* Prompt labels (shown below SVG when showPromptLabels is true) */}
+        {[2, 1, 0].map((depth) => {
+          const label = PROMPT_LABELS[depth];
+          const present = depthsPresent.has(depth);
+          return (
+            <div
+              key={depth}
+              style={{
+                opacity: showPromptLabels && present ? 1 : 0,
+                transition: 'opacity 0.45s ease',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '6px',
+                pointerEvents: 'none',
+              }}
+            >
+              <span style={{ color: label.color, fontFamily: 'monospace', fontSize: '9px', fontWeight: 'bold', whiteSpace: 'nowrap', paddingTop: '1px' }}>
+                D{depth}
+              </span>
+              <span style={{ color: label.color, fontFamily: 'monospace', fontSize: '9px', lineHeight: '1.4' }}>
+                {label.text}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // ── Single-D1 or no-D1 layout (backward compat) ──────────────────────────
   const d0Y  = hasD1 ? D0_Y_SHIFTED : D0_Y;
   const msgY = hasD1 ? MSG_Y_WITH_D1 : MSG_Y;
   const svgH = hasD1 ? SVG_H_WITH_D1 : SVG_H_NO_D1;
   const svgW = X_PAD * 2 + d0Nodes.length * COL_W;
 
-  // d1 node: centered over all summary columns
+  // Single d1 node: centered over all summary columns
   const firstD0CX = X_PAD + NODE_W / 2;
   const lastD0CX  = X_PAD + (d0Nodes.length - 1) * COL_W + NODE_W / 2;
   const d1CX      = (firstD0CX + lastD0CX) / 2;
@@ -238,10 +510,11 @@ export default function DagPanel({ summaries, highlightIds = [] }) {
               );
             })}
 
-            {/* ── d1 node ───────────────────────────────────────────────── */}
+            {/* ── Single d1 node ─────────────────────────────────────────── */}
             {hasD1 && d1Nodes.map((d1) => (
-              <g key={d1.id} ref={d1GroupRef} style={{ opacity: 0 }}>
+              <g key={d1.id} ref={(el) => { d1GroupRefs.current[d1.id] = el; }} style={{ opacity: 0 }}>
                 <rect
+                  ref={(el) => { d1RectRefs.current[d1.id] = el; }}
                   x={d1X} y={D1_Y}
                   width={D1_W} height={D1_H}
                   rx={7}
