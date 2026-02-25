@@ -77,9 +77,9 @@ const SVG_H_D2_D1     = D1_Y_BELOW_D2 + D1_H + 12; // d2 + d1 rows
 
 // ── Prompt label descriptions by depth ──────────────────────────────────────
 const PROMPT_LABELS = {
-  2: { color: 'var(--color-budget-over)', text: 'Durable narrative: decisions in effect, completed work, milestone timeline' },
-  1: { color: 'var(--color-summary-d1)',  text: 'Arc distillation: outcomes, what evolved, current state' },
-  0: { color: 'var(--color-summary)',     text: 'Leaf summary: exact decisions, rationale, technical details' },
+  2: { color: 'var(--color-summary-d2)', text: 'Durable narrative: decisions in effect, completed work, milestone timeline' },
+  1: { color: 'var(--color-summary-d1)', text: 'Arc distillation: outcomes, what evolved, current state' },
+  0: { color: 'var(--color-summary)',    text: 'Leaf summary: exact decisions, rationale, technical details' },
 };
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -306,12 +306,12 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
                   x={d2X} y={D2_Y}
                   width={d2W} height={D2_H}
                   rx={7}
-                  fill="rgba(255,123,114,0.12)"
-                  stroke="var(--color-budget-over)"
+                  fill="rgba(255,220,215,0.08)"
+                  stroke="var(--color-summary-d2)"
                   strokeWidth={1.5}
                 />
                 <text x={d2X + 10} y={D2_Y + 16}
-                  fill="var(--color-budget-over)"
+                  fill="var(--color-summary-d2)"
                   fontSize={9} fontWeight="bold" fontFamily="monospace"
                 >
                   DEPTH 2 · {d2.tokens} tok
@@ -329,28 +329,31 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
               </g>
             ))}
 
-            {/* ── D2→D1 edges (drawn via strokeDashoffset, start invisible) ── */}
-            {hasD2 && d1Nodes.map((d1, i) => {
-              const d1ColX   = X_PAD + i * COL_W;
-              const d1NodeCX = d1ColX + NODE_W / 2;
-              const d2Path = [
-                `M ${d1NodeCX} ${D2_Y + D2_H}`,
-                `C ${d1NodeCX} ${D2_Y + D2_H + 14}`,
-                `  ${d1NodeCX} ${d1RowY - 14}`,
-                `  ${d1NodeCX} ${d1RowY}`,
-              ].join(' ');
-              return (
-                <path
-                  key={`d2edge-${d1.id}`}
-                  ref={(el) => { d2EdgeRefs.current[d1.id] = el; }}
-                  d={d2Path}
-                  stroke="var(--color-budget-over)"
-                  strokeWidth={1.5}
-                  fill="none"
-                  opacity={0}
-                />
-              );
-            })}
+            {/* ── D2→D1 edges: fan out from D2 center, like D1→D0 in single-d1 ── */}
+            {hasD2 && (() => {
+              const d2CenterX = d2X + d2W / 2;
+              return d1Nodes.map((d1, i) => {
+                const d1ColX   = X_PAD + i * COL_W;
+                const d1NodeCX = d1ColX + NODE_W / 2;
+                const d2Path = [
+                  `M ${d2CenterX} ${D2_Y + D2_H}`,
+                  `C ${d2CenterX} ${D2_Y + D2_H + 24}`,
+                  `  ${d1NodeCX} ${d1RowY - 24}`,
+                  `  ${d1NodeCX} ${d1RowY}`,
+                ].join(' ');
+                return (
+                  <path
+                    key={`d2edge-${d1.id}`}
+                    ref={(el) => { d2EdgeRefs.current[d1.id] = el; }}
+                    d={d2Path}
+                    stroke="var(--color-summary-d2)"
+                    strokeWidth={1.5}
+                    fill="none"
+                    opacity={0}
+                  />
+                );
+              });
+            })()}
 
             {/* ── D1 nodes in columns ──────────────────────────────── */}
             {d1Nodes.map((d1, i) => {
