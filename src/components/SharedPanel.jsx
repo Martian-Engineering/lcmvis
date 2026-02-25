@@ -157,9 +157,10 @@ const SharedPanel = forwardRef(function SharedPanel({
   // Whether the context window should collapse (LCM tool steps)
   const ctxCollapsed = isLcm && lcmToolView;
 
-  // ── Stagger new items in ────────────────────────────────────────────────────
+  // ── Animate each new item in ─────────────────────────────────────────────────
+  // Items arrive one at a time via scene-side stagger, so this typically sees
+  // 1 new item per invocation. Falls back to multi-item stagger for fast scrolls.
   useEffect(() => {
-    // Build the current set of visible item IDs
     let currentIds;
     if (isTraditional) {
       currentIds = new Set(tradShowSummary ? ['trad-summary'] : tradItems.map((m) => m.id));
@@ -180,7 +181,7 @@ const SharedPanel = forwardRef(function SharedPanel({
 
       gsap.fromTo(els,
         { opacity: 0, y: -12, scale: 0.96 },
-        { opacity: 1, y: 0, scale: 1, duration: 0.35, stagger: 0.07, ease: 'power2.out' }
+        { opacity: 1, y: 0, scale: 1, duration: 0.3, stagger: 0.07, ease: 'power2.out' }
       );
     });
     return () => cancelAnimationFrame(frame);

@@ -28,13 +28,13 @@ function Hero() {
         style={{ color: 'var(--color-text)' }}
         className="text-5xl font-bold leading-tight m-0 mb-6 max-w-2xl"
       >
-        Context Without Compromise
+        Don't Lose Your Context
       </h1>
       <p
         style={{ color: 'var(--color-muted)', lineHeight: '1.7' }}
         className="text-base max-w-xl m-0 mb-10"
       >
-        Traditional LLMs silently drop your oldest messages when the context fills up.
+        Traditional agents silently drop your oldest messages when the context fills up.
         LCM replaces that lossy truncation with hierarchical summarization — every
         message preserved, every detail recoverable on demand.
       </p>
@@ -52,22 +52,24 @@ function Hero() {
 export default function App() {
   const panelRef = useRef(null);
 
-  // Mode: which scene is active ('traditional' or 'lcm')
+  // Mode: which scene is active ('traditional' or 'lcm').
+  // Only switched by ScrollTrigger activation — never by state-change effects.
   const [mode, setMode] = useState('traditional');
+
+  // Stable mode activators — called from ScrollTrigger handlers only
+  const activateTrad = useCallback(() => setMode('traditional'), []);
+  const activateLcm  = useCallback(() => setMode('lcm'), []);
 
   // State blobs from each scene, passed through to SharedPanel
   const [tradState, setTradState] = useState(null);
   const [lcmState,  setLcmState]  = useState(null);
 
-  // When TraditionalScene reports state, switch to traditional mode
+  // State handlers — report data only, don't switch mode
   const handleTradState = useCallback((state) => {
-    setMode('traditional');
     setTradState(state);
   }, []);
 
-  // When CompactionScene reports state, switch to lcm mode
   const handleLcmState = useCallback((state) => {
-    setMode('lcm');
     setLcmState(state);
   }, []);
 
@@ -82,10 +84,12 @@ export default function App() {
         <div className="flex flex-col" style={{ width: '45%' }}>
           <TraditionalScene
             onStateChange={handleTradState}
+            onActivate={activateTrad}
             panelRef={panelRef}
           />
           <CompactionScene
             onStateChange={handleLcmState}
+            onActivate={activateLcm}
             panelRef={panelRef}
           />
         </div>

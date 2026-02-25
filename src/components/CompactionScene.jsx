@@ -161,16 +161,17 @@ function itemsForStep(s) {
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
-export default function CompactionScene({ onStateChange, panelRef }) {
+export default function CompactionScene({ onStateChange, onActivate, panelRef }) {
   const [step,        setStep]        = useState(0);
   const [items,       setItems]       = useState([]);
   const [summaries,   setSummaries]   = useState([]);
   const [compacting,  setCompacting]  = useState(false);
   const [fastForward, setFastForward] = useState(false);
 
-  const narrationRefs = useRef([]);
-  const scrubRef      = useRef(null);
-  const prevStepRef   = useRef(-1);
+  const narrationRefs  = useRef([]);
+  const scrubRef       = useRef(null);
+  const prevStepRef    = useRef(-1);
+  const staggerQueue   = useRef([]);
 
   // Tool visualization state (steps 12–17)
   const [toolView,    setToolView]    = useState(null);
@@ -220,6 +221,10 @@ export default function CompactionScene({ onStateChange, panelRef }) {
 
   // ── Apply step ──────────────────────────────────────────────────────────────
   const applyStep = useCallback((s) => {
+    // Cancel any pending staggered additions from a previous step
+    staggerQueue.current.forEach((c) => c.kill());
+    staggerQueue.current = [];
+
     const prev = prevStepRef.current;
     prevStepRef.current = s;
     setStep(s);
@@ -273,9 +278,30 @@ export default function CompactionScene({ onStateChange, panelRef }) {
       return;
     }
 
+    // Default: set target items, staggering new additions when scrolling forward
     const t = itemsForStep(s);
-    setItems(t.items);
     setSummaries(t.summaries);
+
+    if (s > prev && prev >= 0) {
+      // Forward scroll — diff against previous step to find new items
+      const prevT   = itemsForStep(prev);
+      const prevIds = new Set(prevT.items.map((i) => i.data.id));
+      const keep    = t.items.filter((i) => prevIds.has(i.data.id));
+      const added   = t.items.filter((i) => !prevIds.has(i.data.id));
+
+      if (added.length > 1) {
+        // Stagger new items in one at a time (appended at end)
+        setItems(keep);
+        added.forEach((item, i) => {
+          staggerQueue.current.push(
+            gsap.delayedCall(i * 0.1, () => setItems((p) => [...p, item]))
+          );
+        });
+        return;
+      }
+    }
+
+    setItems(t.items);
   }, [animateCollapse]);
 
   // ── ScrollTriggers (narration sections) ───────────────────────────────────
@@ -286,12 +312,12 @@ export default function CompactionScene({ onStateChange, panelRef }) {
         trigger:    el,
         start:      'top 55%',
         end:        'bottom 45%',
-        onEnter:     () => applyStep(i),
-        onEnterBack: () => applyStep(i),
+        onEnter:     () => { onActivate?.(); applyStep(i); },
+        onEnterBack: () => { onActivate?.(); applyStep(i); },
       });
     });
     return () => triggers.forEach((t) => t?.kill());
-  }, [applyStep]);
+  }, [applyStep, onActivate]);
 
   // ── Scrub section ScrollTrigger ───────────────────────────────────────────
   useEffect(() => {
@@ -305,6 +331,7 @@ export default function CompactionScene({ onStateChange, panelRef }) {
       scrub:   0.6,
 
       onEnter: () => {
+        onActivate?.();
         sum3Added.current = false;
         sum4Added.current = false;
         setFastForward(true);
@@ -315,6 +342,7 @@ export default function CompactionScene({ onStateChange, panelRef }) {
       },
 
       onLeaveBack: () => {
+        onActivate?.();
         sum3Added.current = false;
         sum4Added.current = false;
         setFastForward(false);
@@ -366,7 +394,7 @@ export default function CompactionScene({ onStateChange, panelRef }) {
     });
 
     return () => trigger.kill();
-  }, []);
+  }, [onActivate]);
 
   // ── Fast-forward card (sticky inside the scrub section) ────────────────────
   function FastForwardCard() {

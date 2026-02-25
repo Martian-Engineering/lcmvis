@@ -43,14 +43,15 @@ const STEPS = [
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function TraditionalScene({ onStateChange, panelRef }) {
+export default function TraditionalScene({ onStateChange, onActivate, panelRef }) {
   const [step,        setStep]        = useState(0);
   const [items,       setItems]       = useState(T_MESSAGES.slice(0, 2));
   const [showSummary, setShowSummary] = useState(false);
   const [summarizing, setSummarizing] = useState(false);
 
-  const narrationRefs = useRef([]);
-  const prevStepRef   = useRef(0);
+  const narrationRefs  = useRef([]);
+  const prevStepRef    = useRef(0);
+  const staggerQueue   = useRef([]);
 
   // Token count for the budget bar
   const usedTokens = showSummary
@@ -64,6 +65,10 @@ export default function TraditionalScene({ onStateChange, panelRef }) {
 
   // ── Apply step ──────────────────────────────────────────────────────────────
   const applyStep = useCallback((s) => {
+    // Cancel any pending staggered additions from a previous step
+    staggerQueue.current.forEach((c) => c.kill());
+    staggerQueue.current = [];
+
     const prev = prevStepRef.current;
     prevStepRef.current = s;
     setStep(s);
@@ -76,9 +81,19 @@ export default function TraditionalScene({ onStateChange, panelRef }) {
     }
 
     if (s === 1) {
-      setItems(T_MESSAGES);
       setShowSummary(false);
       setSummarizing(false);
+      if (prev < 1) {
+        // Forward: stagger the 4 new messages in one at a time
+        T_MESSAGES.slice(2).forEach((msg, i) => {
+          staggerQueue.current.push(
+            gsap.delayedCall(i * 0.1, () => setItems((p) => [...p, msg]))
+          );
+        });
+      } else {
+        // Backward: show all messages immediately
+        setItems(T_MESSAGES);
+      }
       return;
     }
 
@@ -114,12 +129,12 @@ export default function TraditionalScene({ onStateChange, panelRef }) {
         trigger:     el,
         start:       'top 38%',
         end:         'bottom 38%',
-        onEnter:     () => applyStep(i),
-        onEnterBack: () => applyStep(i),
+        onEnter:     () => { onActivate?.(); applyStep(i); },
+        onEnterBack: () => { onActivate?.(); applyStep(i); },
       });
     });
     return () => triggers.forEach((t) => t?.kill());
-  }, [applyStep]);
+  }, [applyStep, onActivate]);
 
   // ── Render (left narration column only) ─────────────────────────────────────
   return (
@@ -128,8 +143,11 @@ export default function TraditionalScene({ onStateChange, panelRef }) {
         <div
           key={i}
           ref={(el) => { narrationRefs.current[i] = el; }}
-          className="flex items-center"
-          style={{ minHeight: i === 0 ? '100vh' : '80vh', padding: '0 3.5rem' }}
+          className={`flex ${i === 0 ? 'items-start' : 'items-center'}`}
+          style={{
+            minHeight: i === 0 ? '100vh' : '80vh',
+            padding: i === 0 ? '2.25rem 3.5rem 0' : '0 3.5rem',
+          }}
         >
           <div className="flex flex-col gap-4">
             <span
