@@ -156,39 +156,26 @@ export default function LargeFilePanel({ phase }) {
             transition: 'max-height 0.4s cubic-bezier(0.16,1,0.3,1) 0.1s, opacity 0.3s ease 0.15s',
           }}>
             <div
-              style={{
-                background: 'rgba(86,211,100,0.04)',
-                border: '1px solid rgba(86,211,100,0.3)',
-                borderRadius: 4,
-                marginTop: 4,
-              }}
-              className="px-2 py-1.5 flex flex-col gap-1"
+              style={{ background: 'rgba(0,0,0,0.18)', borderRadius: 4, marginTop: 4 }}
+              className="px-2 py-1.5 flex flex-col gap-0.5"
             >
-              <div className="flex items-center gap-1.5">
-                <span
-                  style={{ color: 'var(--color-fresh)', borderColor: 'var(--color-fresh)' }}
-                  className="rounded border px-1 py-0 text-[8px] font-bold"
-                >
-                  FILE REF
-                </span>
-                <span style={{ color: 'var(--color-fresh)' }} className="text-[9px] font-mono">
-                  {FILE_ID}
-                </span>
-                <span style={{ color: 'var(--color-muted)' }} className="text-[9px] ml-auto tabular-nums">
-                  ~{STUB_TOKENS} tok
-                </span>
-              </div>
-              <div style={{ color: 'var(--color-muted)' }} className="text-[8px] font-mono">
-                {FILE_NAME} · stored externally · use lcm_describe to retrieve
-              </div>
+              <span style={{ color: 'var(--color-fresh)' }} className="text-[8px] font-mono">
+                [LCM File: {FILE_ID} | {FILE_NAME} | text/plain | 114,000 bytes]
+              </span>
+              <span style={{ color: 'var(--color-muted)' }} className="text-[8px] font-mono mt-0.5">
+                Exploration Summary:
+              </span>
+              <span style={{ color: 'var(--color-muted)' }} className="text-[8px] font-mono leading-relaxed line-clamp-2">
+                {EXPLORATION}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* ── Storage path (phase 2 only) ────────────────────────────────────── */}
+        {/* ── Storage path (phase 2+) ──────────────────────────────────────────── */}
         <div style={{
-          opacity: showStub && !showDescribe ? 1 : 0,
-          maxHeight: showStub && !showDescribe ? '24px' : 0,
+          opacity: showStub ? 1 : 0,
+          maxHeight: showStub ? '24px' : 0,
           overflow: 'hidden',
           transition: 'opacity 0.3s ease 0.25s, max-height 0.3s cubic-bezier(0.16,1,0.3,1) 0.25s',
           color: 'var(--color-border)',
@@ -196,65 +183,56 @@ export default function LargeFilePanel({ phase }) {
           ~/.openclaw/lcm-files/conv_xyz/{FILE_ID}.log
         </div>
 
-        {/* ── lcm_describe retrieval (phase 3) ─────────────────────────────── */}
+        {/* ── Filesystem retrieval (phase 3) ───────────────────────────────── */}
         {showDescribe && (
           <>
             <div style={{ color: 'var(--color-muted)' }} className="text-[8px] font-mono tracking-widest shrink-0">
               RETRIEVE
             </div>
 
-            {/* Command */}
+            {/* Read tool call */}
             <div
               style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid var(--color-border)' }}
               className="rounded px-2 py-1.5 shrink-0"
             >
               <span style={{ color: 'var(--color-muted)' }} className="text-[9px] font-mono">{'> '}</span>
-              <span style={{ color: 'var(--color-text)' }} className="text-[9px] font-mono">
-                {'lcm_describe(id="'}{FILE_ID}{'")'}
+              <span style={{ color: 'var(--color-text)', whiteSpace: 'pre-wrap' }} className="text-[9px] font-mono">
+                {'Read("~/.openclaw/lcm-files/conv_xyz/'}{FILE_ID}{'.log")'}
               </span>
             </div>
 
             <div style={{ color: 'var(--color-muted)' }} className="text-[9px] font-mono shrink-0">
-              ✓ file found
+              ✓ 847 lines · {FILE_TOKENS.toLocaleString()} tok
             </div>
 
-            {/* File metadata card */}
+            {/* File content card */}
             <div
               style={{
                 background: 'rgba(0,0,0,0.15)',
                 border: '1px solid rgba(86,211,100,0.25)',
                 borderLeft: '2px solid var(--color-fresh)',
               }}
-              className="rounded px-2.5 py-2 flex flex-col gap-1.5 shrink-0"
+              className="rounded px-2.5 py-2 flex flex-col gap-0.5 shrink-0"
             >
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span
-                  style={{ color: 'var(--color-fresh)', borderColor: 'var(--color-fresh)' }}
-                  className="rounded border px-1 py-0 text-[8px] font-bold shrink-0"
-                >
-                  FILE
-                </span>
-                <span style={{ color: 'var(--color-fresh)' }} className="text-[10px] font-mono font-semibold">
-                  {FILE_ID}
-                </span>
-                <span style={{ color: 'var(--color-muted)' }} className="text-[9px] ml-auto tabular-nums">
-                  {FILE_TOKENS.toLocaleString()} tok stored
-                </span>
+              {LOG_LINES.map((line, i) => (
+                <div key={i} className="flex gap-1.5 items-baseline">
+                  <span style={{ color: 'var(--color-border)' }} className="text-[7px] font-mono shrink-0">
+                    {line.time}
+                  </span>
+                  <span
+                    style={{ color: LEVEL_COLOR[line.level] }}
+                    className="text-[7px] font-mono font-bold shrink-0 w-8"
+                  >
+                    {line.level}
+                  </span>
+                  <span style={{ color: 'var(--color-muted)' }} className="text-[7px] font-mono leading-snug">
+                    {line.text}
+                  </span>
+                </div>
+              ))}
+              <div style={{ color: 'var(--color-border)' }} className="text-[7px] font-mono mt-0.5">
+                … 840 more lines
               </div>
-              <div className="flex flex-col gap-1">
-                {[
-                  ['filename',    FILE_NAME],
-                  ['stub_tokens', String(STUB_TOKENS)],
-                ].map(([k, v]) => (
-                  <div key={k} className="flex gap-1.5">
-                    <span style={{ color: 'var(--color-muted)' }} className="text-[9px] font-mono w-20 shrink-0">{k}</span>
-                    <span style={{ color: 'var(--color-text)' }} className="text-[9px] font-mono">{v}</span>
-                  </div>
-                ))}
-              </div>
-              <p style={{ color: 'var(--color-muted)' }} className="m-0 text-[9px] font-mono leading-relaxed line-clamp-4">
-                {EXPLORATION}
-              </p>
             </div>
           </>
         )}
