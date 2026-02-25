@@ -116,20 +116,16 @@ const STEPS = [
     body: 'This is what the model receives each turn: a compact summary of all prior history, followed by the verbatim recent conversation. Full coverage. Bounded cost. This is what makes long conversations tractable.',
   },
   {
-    title: 'A Large File Arrives',
-    body: 'When you paste a large file into the conversation — a log dump, a codebase snapshot, a JSON export — LCM detects it automatically at ingestion. This log file is 28,500 tokens: enough to crowd out dozens of turns of conversation history.',
+    title: 'The DAG Grows Deep',
+    body: 'As the conversation accumulates, compaction runs at every depth. Sixteen leaf summaries have formed across 64 turns. Four depth-1 condensations synthesized them. A single depth-2 node now covers the whole arc — 128 messages in 840 tokens.',
   },
   {
-    title: 'LCM Intercepts',
-    body: 'Before the file enters the context window, LCM parses embedded file blocks. This file exceeds the 25,000-token threshold, so LCM extracts it: content is stored to disk and the original block is replaced with a compact stub.',
+    title: 'Depth-Aware Summarization',
+    body: 'Each depth runs a different prompt. Leaf summaries preserve specifics: decisions, rationale, technical details. Depth-1 distills the arc: outcomes, what evolved, current state. Depth-2 produces a durable narrative — decisions still in effect, completed milestones — the kind of context that stays useful long after the details fade.',
   },
   {
-    title: 'A Compact Reference',
-    body: 'The context window receives a ~200 token stub instead of 28,500 tokens. The full log is safely on disk. The stub tells the agent what the file contains — name, ID, and an exploration summary — so it knows exactly when and how to retrieve it.',
-  },
-  {
-    title: 'Retrieval on Demand',
-    body: 'The exploration summary in the stub is already in the agent\'s context — often enough to reason about the file without any tool call. For specific details, lcm_expand_query asks a targeted question and returns only the relevant section. The full 28,500 tokens never re-enter the context window.',
+    title: 'A Forever Conversation',
+    body: 'The DAG can grow without bound — depth-3, depth-4, each layer more abstract and more durable. The fresh tail anchors the present. The model always has the full arc in bounded context. Nothing is ever discarded. This is what makes genuinely long-running collaborations possible.',
   },
 ];
 
@@ -189,11 +185,9 @@ function itemsForStep(s) {
     };
     case 10: case 11: case 12: case 13:
     case 14: case 15: case 16: case 17:
-    // Assembler steps: keep the context window at the same state as post-condensation.
-    // The AssemblerPanel is self-contained and shows its own richer example independently.
-    case 18: case 19: case 20: case 21:
-    // Large file steps: same — LargeFilePanel is self-contained.
-    case 22: case 23: case 24: case 25: return {
+    // Assembler and lifecycle steps: self-contained panels; context window stays frozen.
+    case 22: case 23: case 24:
+    case 18: case 19: case 20: case 21: return {
       items: [sumItem(D1_SUMMARY), ftItem],
       summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4, D1_SUMMARY],
     };
@@ -222,9 +216,10 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
   const [assemblerView,  setAssemblerView]  = useState(false);
   const [assemblerPhase, setAssemblerPhase] = useState(0);
 
-  // Large file visualization state (steps 22–25)
-  const [largeFileView,  setLargeFileView]  = useState(false);
-  const [largeFilePhase, setLargeFilePhase] = useState(0);
+  // Lifecycle visualization state (steps 22–24)
+  const [lifecycleView,  setLifecycleView]  = useState(false);
+  const [lifecyclePhase, setLifecyclePhase] = useState(0);
+
 
   // Scrub milestone flags
   const sum3Added = useRef(false);
@@ -256,12 +251,12 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
       showFreshTail: step >= 3 || fastForward,
       toolView, expandPhase, dagHighlightIds, bannerText,
       assemblerView, assemblerPhase,
-      largeFileView, largeFilePhase,
+      lifecycleView, lifecyclePhase,
     });
   }, [step, items, summaries, usedTokens, compacting, fastForward,
       toolView, expandPhase, dagHighlightIds, bannerText,
       assemblerView, assemblerPhase,
-      largeFileView, largeFilePhase, onStateChange]);
+      lifecycleView, lifecyclePhase, onStateChange]);
 
   // ── Collapse animation (delegated to SharedPanel) ─────────────────────────
   const animateCollapse = useCallback((ids, onComplete) => {
@@ -308,11 +303,11 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
       setAssemblerView(false); setAssemblerPhase(0);
     }
 
-    // Large file view driven by step number (steps 22–25)
-    if (s >= 22 && s <= 25) {
-      setLargeFileView(true);  setLargeFilePhase(s - 22);
+    // Lifecycle view driven by step number (steps 22–24)
+    if (s >= 22 && s <= 24) {
+      setLifecycleView(true);  setLifecyclePhase(s === 22 ? 0 : 1);
     } else {
-      setLargeFileView(false); setLargeFilePhase(0);
+      setLifecycleView(false); setLifecyclePhase(0);
     }
 
     // Compaction collapse animations (forward only)
