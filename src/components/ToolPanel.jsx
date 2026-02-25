@@ -262,9 +262,16 @@ export default function ToolPanel({ view, expandPhase }) {
           </>
         )}
 
-        {/* ── Expand: delegation + sub-agent ───────────────────────────────── */}
+        {/* ── Expand: main agent → sub-agent nesting ───────────────────────── */}
         {isExpand && (
           <>
+            <style>{`
+              @keyframes lcm-subagent-pulse {
+                0%, 100% { opacity: 1; }
+                50%       { opacity: 0.25; }
+              }
+            `}</style>
+
             {/* Main agent actions */}
             <div className="flex flex-col gap-0.5">
               <div style={{ color: 'var(--color-muted)' }} className="text-[8px] font-mono tracking-widest mb-1">
@@ -281,74 +288,98 @@ export default function ToolPanel({ view, expandPhase }) {
               ))}
             </div>
 
-            {/* Sub-agent box */}
+            {/* Indented sub-agent region — left border acts as nesting connector */}
             <div style={{
-              border: '1px solid var(--color-summary-d1)',
-              borderRadius: 6,
-              overflow: 'hidden',
+              marginLeft: 8,
+              paddingLeft: 10,
+              borderLeft: '1px solid rgba(255,123,114,0.4)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
             }}>
-              {/* Sub-agent header */}
+              {/* Sub-agent box */}
               <div style={{
-                background: 'rgba(255,123,114,0.08)',
-                borderBottom: '1px solid var(--color-summary-d1)',
-                padding: '5px 10px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
+                border: '1px solid var(--color-summary-d1)',
+                borderRadius: 6,
+                overflow: 'hidden',
               }}>
-                <span
-                  style={{ color: 'var(--color-summary-d1)', borderColor: 'var(--color-summary-d1)' }}
-                  className="rounded border px-1 py-0 text-[8px] font-bold tracking-widest"
-                >
-                  SUB-AGENT
-                </span>
-                <span style={{ color: 'var(--color-muted)' }} className="text-[9px] font-mono">
-                  read-only · bounded scope
-                </span>
-              </div>
-              {/* Traversal log */}
-              <div className="flex flex-col gap-1 p-2.5">
-                {expandPhase < 1 ? (
-                  <span style={{ color: 'var(--color-muted)' }} className="text-[9px] font-mono">
-                    Awaiting sub-agent…
-                  </span>
-                ) : (
-                  SUB_AGENT_LINES.filter((l) => expandPhase >= l.minPhase).map((l, i) => (
-                    <div
-                      key={i}
-                      style={{ color: l.accent ? 'var(--color-summary-d1)' : 'var(--color-muted)' }}
-                      className="text-[9px] font-mono leading-snug"
-                    >
-                      {l.text}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Response card — visible at phase 3 */}
-            {expandPhase >= 3 && (
-              <div
-                style={{
-                  background: 'rgba(255,123,114,0.06)',
-                  border: '1px solid var(--color-summary-d1)',
-                }}
-                className="rounded px-2.5 py-2 flex flex-col gap-1"
-              >
-                <div style={{ color: 'var(--color-summary-d1)' }} className="text-[9px] font-bold font-mono mb-0.5">
-                  Sub-agent response ↓
-                </div>
-                {EXPAND_RESPONSE.map((line, i) => (
+                {/* Sub-agent header */}
+                <div style={{
+                  background: 'rgba(255,123,114,0.08)',
+                  borderBottom: '1px solid var(--color-summary-d1)',
+                  padding: '5px 10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}>
                   <span
-                    key={i}
-                    style={{ color: 'var(--color-text)' }}
-                    className="text-[9px] font-mono leading-relaxed"
+                    style={{ color: 'var(--color-summary-d1)', borderColor: 'var(--color-summary-d1)' }}
+                    className="rounded border px-1 py-0 text-[8px] font-bold tracking-widest"
                   >
-                    {line}
+                    SUB-AGENT
                   </span>
-                ))}
+                  {/* Activity pulse dot — animates while sub-agent is running, static when done */}
+                  {expandPhase >= 1 && (
+                    <div style={{
+                      width: 5,
+                      height: 5,
+                      borderRadius: '50%',
+                      flexShrink: 0,
+                      background: 'var(--color-summary-d1)',
+                      animation: expandPhase < 3
+                        ? 'lcm-subagent-pulse 1.2s ease-in-out infinite'
+                        : 'none',
+                      opacity: expandPhase >= 3 ? 0.45 : 1,
+                    }} />
+                  )}
+                  <span style={{ color: 'var(--color-muted)' }} className="text-[9px] font-mono">
+                    read-only · bounded scope
+                  </span>
+                </div>
+                {/* Traversal log */}
+                <div className="flex flex-col gap-1 p-2.5">
+                  {expandPhase < 1 ? (
+                    <span style={{ color: 'var(--color-muted)' }} className="text-[9px] font-mono">
+                      Awaiting sub-agent…
+                    </span>
+                  ) : (
+                    SUB_AGENT_LINES.filter((l) => expandPhase >= l.minPhase).map((l, i) => (
+                      <div
+                        key={i}
+                        style={{ color: l.accent ? 'var(--color-summary-d1)' : 'var(--color-muted)' }}
+                        className="text-[9px] font-mono leading-snug"
+                      >
+                        {l.text}
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
-            )}
+
+              {/* Response card — visible at phase 3 */}
+              {expandPhase >= 3 && (
+                <div
+                  style={{
+                    background: 'rgba(255,123,114,0.06)',
+                    border: '1px solid var(--color-summary-d1)',
+                  }}
+                  className="rounded px-2.5 py-2 flex flex-col gap-1"
+                >
+                  <div style={{ color: 'var(--color-summary-d1)' }} className="text-[9px] font-bold font-mono mb-0.5">
+                    Sub-agent response ↓
+                  </div>
+                  {EXPAND_RESPONSE.map((line, i) => (
+                    <span
+                      key={i}
+                      style={{ color: 'var(--color-text)' }}
+                      className="text-[9px] font-mono leading-relaxed"
+                    >
+                      {line}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           </>
         )}
       </div>
