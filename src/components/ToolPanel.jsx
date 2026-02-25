@@ -58,9 +58,8 @@ const GREP_RESULTS = [
 // ── Expand simulation data ──────────────────────────────────────────────────────
 // Main agent actions: shown above the sub-agent box (phase 1+)
 const MAIN_AGENT_LINES = [
-  { minPhase: 1, accent: true,  text: '✓  Delegation grant issued' },
-  { minPhase: 1, accent: false, text: '   grant_a1b2 · conv_7 · 4,000 tok cap · 120s TTL' },
   { minPhase: 1, accent: true,  text: '✓  Sub-agent spawned' },
+  { minPhase: 1, accent: false, text: '   task: expand DAG around "refresh token"' },
 ];
 
 // Sub-agent traversal log: shown inside the framed sub-agent box
@@ -119,7 +118,7 @@ export default function ToolPanel({ view, expandPhase }) {
     ? 'lcm_describe node_id="sum_d1_01"'
     : isGrep
     ? 'lcm_grep query="OAuth2" scope="both"'
-    : 'lcm_expand_query(\n  prompt="How does the refresh token flow work?",\n  query="refresh token"\n)';
+    : 'lcm_expand_query(query="refresh token", prompt="How does the refresh token flow work?")';
 
   return (
     <div
@@ -304,14 +303,14 @@ export default function ToolPanel({ view, expandPhase }) {
                   SUB-AGENT
                 </span>
                 <span style={{ color: 'var(--color-muted)' }} className="text-[9px] font-mono">
-                  grant_a1b2
+                  read-only · bounded scope
                 </span>
               </div>
               {/* Traversal log */}
               <div className="flex flex-col gap-1 p-2.5">
                 {expandPhase < 1 ? (
                   <span style={{ color: 'var(--color-muted)' }} className="text-[9px] font-mono">
-                    Awaiting delegation grant…
+                    Awaiting sub-agent…
                   </span>
                 ) : (
                   SUB_AGENT_LINES.filter((l) => expandPhase >= l.minPhase).map((l, i) => (
