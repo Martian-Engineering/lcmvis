@@ -150,7 +150,7 @@ export default function LargeFilePanel({ phase }) {
 
           {/* Stub reference — slides in after extraction */}
           <div style={{
-            maxHeight: showStub ? '80px' : 0,
+            maxHeight: showStub ? '110px' : 0,
             overflow: 'hidden',
             opacity: showStub ? 1 : 0,
             transition: 'max-height 0.4s cubic-bezier(0.16,1,0.3,1) 0.1s, opacity 0.3s ease 0.15s',
@@ -162,77 +162,60 @@ export default function LargeFilePanel({ phase }) {
               <span style={{ color: 'var(--color-fresh)' }} className="text-[8px] font-mono">
                 [LCM File: {FILE_ID} | {FILE_NAME} | text/plain | 114,000 bytes]
               </span>
-              <span style={{ color: 'var(--color-muted)' }} className="text-[8px] font-mono mt-0.5">
+              <span style={{ color: 'var(--color-muted)' }} className="text-[8px] font-mono mt-1">
                 Exploration Summary:
               </span>
-              <span style={{ color: 'var(--color-muted)' }} className="text-[8px] font-mono leading-relaxed line-clamp-2">
+              <span style={{ color: 'var(--color-muted)' }} className="text-[8px] font-mono leading-relaxed line-clamp-3">
                 {EXPLORATION}
               </span>
             </div>
           </div>
         </div>
 
-        {/* ── Storage path (phase 2+) ──────────────────────────────────────────── */}
-        <div style={{
-          opacity: showStub ? 1 : 0,
-          maxHeight: showStub ? '24px' : 0,
-          overflow: 'hidden',
-          transition: 'opacity 0.3s ease 0.25s, max-height 0.3s cubic-bezier(0.16,1,0.3,1) 0.25s',
-          color: 'var(--color-border)',
-        }} className="text-[8px] font-mono shrink-0">
-          ~/.openclaw/lcm-files/conv_xyz/{FILE_ID}.log
-        </div>
-
-        {/* ── Filesystem retrieval (phase 3) ───────────────────────────────── */}
+{/* ── Targeted retrieval via lcm_expand_query (phase 3) ────────────── */}
         {showDescribe && (
           <>
             <div style={{ color: 'var(--color-muted)' }} className="text-[8px] font-mono tracking-widest shrink-0">
-              RETRIEVE
+              TARGETED ACCESS
             </div>
 
-            {/* Read tool call */}
+            {/* Command */}
             <div
               style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid var(--color-border)' }}
               className="rounded px-2 py-1.5 shrink-0"
             >
               <span style={{ color: 'var(--color-muted)' }} className="text-[9px] font-mono">{'> '}</span>
               <span style={{ color: 'var(--color-text)', whiteSpace: 'pre-wrap' }} className="text-[9px] font-mono">
-                {'Read("~/.openclaw/lcm-files/conv_xyz/'}{FILE_ID}{'.log")'}
+                {'lcm_expand_query(\n  query="auth DB timeout errors",\n  prompt="What caused the DB timeouts?")'}
               </span>
             </div>
 
             <div style={{ color: 'var(--color-muted)' }} className="text-[9px] font-mono shrink-0">
-              ✓ 847 lines · {FILE_TOKENS.toLocaleString()} tok
+              ✓ sub-agent retrieved relevant entries
             </div>
 
-            {/* File content card */}
+            {/* Focused answer — only the relevant lines, not the whole file */}
             <div
               style={{
                 background: 'rgba(0,0,0,0.15)',
-                border: '1px solid rgba(86,211,100,0.25)',
-                borderLeft: '2px solid var(--color-fresh)',
+                border: '1px solid rgba(255,123,114,0.25)',
+                borderLeft: '2px solid var(--color-summary-d1)',
               }}
               className="rounded px-2.5 py-2 flex flex-col gap-0.5 shrink-0"
             >
-              {LOG_LINES.map((line, i) => (
-                <div key={i} className="flex gap-1.5 items-baseline">
-                  <span style={{ color: 'var(--color-border)' }} className="text-[7px] font-mono shrink-0">
-                    {line.time}
-                  </span>
-                  <span
-                    style={{ color: LEVEL_COLOR[line.level] }}
-                    className="text-[7px] font-mono font-bold shrink-0 w-8"
-                  >
-                    {line.level}
-                  </span>
-                  <span style={{ color: 'var(--color-muted)' }} className="text-[7px] font-mono leading-snug">
-                    {line.text}
-                  </span>
-                </div>
-              ))}
-              <div style={{ color: 'var(--color-border)' }} className="text-[7px] font-mono mt-0.5">
-                … 840 more lines
+              <div style={{ color: 'var(--color-summary-d1)' }} className="text-[9px] font-bold font-mono mb-0.5">
+                Sub-agent response ↓
               </div>
+              {[
+                'Three connection timeouts to pool=auth-db at 14:23:02,',
+                '14:23:05, and 14:23:08 (3 attempts, all failed). Token',
+                'refresh fell back to cached token (ttl=847s). No further',
+                'errors in the remaining 840 log entries.',
+              ].map((line, i) => (
+                <span key={i} style={{ color: 'var(--color-text)' }} className="text-[9px] font-mono leading-relaxed">
+                  {line}
+                </span>
+              ))}
             </div>
           </>
         )}

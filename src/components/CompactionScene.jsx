@@ -129,7 +129,7 @@ const STEPS = [
   },
   {
     title: 'Retrieval on Demand',
-    body: 'When the agent needs the file, it reads it directly from disk using normal filesystem tools — the stub in the message provides the file ID and path. No budget impact at ingestion. Full access on demand. This is how LCM lets you paste large files freely without blowing your context.',
+    body: 'The exploration summary in the stub is already in the agent\'s context — often enough to reason about the file without any tool call. For specific details, lcm_expand_query asks a targeted question and returns only the relevant section. The full 28,500 tokens never re-enter the context window.',
   },
 ];
 
