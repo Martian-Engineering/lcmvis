@@ -16,6 +16,10 @@ import Narration from './Narration';
 import {
   MESSAGES as M,
   SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4, D1_SUMMARY,
+  SUMMARY_5, SUMMARY_6, SUMMARY_7, SUMMARY_8, D1_SUMMARY_2,
+  SUMMARY_9, SUMMARY_10, SUMMARY_11, SUMMARY_12, D1_SUMMARY_3,
+  SUMMARY_13, SUMMARY_14, SUMMARY_15, SUMMARY_16, D1_SUMMARY_4,
+  D2_SUMMARY,
   FRESH_TAIL_PLACEHOLDER,
 } from '../data/conversation';
 
@@ -170,8 +174,15 @@ function itemsForStep(s) {
     case 10: case 11: case 12: case 13:
     case 14: case 15: case 16: case 17:
     case 18: case 19: case 20: case 21: return {
-      items: [sumItem(D1_SUMMARY), ftItem],
-      summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4, D1_SUMMARY],
+      // Richer assembled context for the assembler demo: D2 + recent D1 + recent D0 + fresh tail
+      items: [sumItem(D2_SUMMARY), sumItem(D1_SUMMARY_4), sumItem(SUMMARY_16), ftItem],
+      summaries: [
+        SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4, D1_SUMMARY,
+        SUMMARY_5, SUMMARY_6, SUMMARY_7, SUMMARY_8, D1_SUMMARY_2,
+        SUMMARY_9, SUMMARY_10, SUMMARY_11, SUMMARY_12, D1_SUMMARY_3,
+        SUMMARY_13, SUMMARY_14, SUMMARY_15, SUMMARY_16, D1_SUMMARY_4,
+        D2_SUMMARY,
+      ],
     };
     default: return { items: [], summaries: [] };
   }

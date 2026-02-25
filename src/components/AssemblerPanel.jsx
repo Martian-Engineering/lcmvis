@@ -1,36 +1,61 @@
 /**
  * AssemblerPanel — shows how the LCM assembler constructs the model's
- * message array before each turn: an evictable summary prefix and a
- * guaranteed fresh tail.
+ * message array before each turn: an evictable summary prefix (D2, D1, D0)
+ * and a guaranteed fresh tail.
  *
  * Props:
  *   phase — 0..3
  *     0: intro  — assembled items visible, simple budget bar
  *     1: zones  — split budget bar + zone labels appear
- *     2: xml    — summary item expands to show its XML wire format
+ *     2: xml    — D2 summary expands to show its XML wire format
  *     3: output — clean final view (same as 2, narration wraps it up)
  */
-import { D1_SUMMARY, FRESH_TAIL_PLACEHOLDER, TOTAL_BUDGET } from '../data/conversation';
+import { D2_SUMMARY, D1_SUMMARY_4, SUMMARY_16, FRESH_TAIL_PLACEHOLDER, TOTAL_BUDGET } from '../data/conversation';
 
-const SUMMARY_TOKENS = D1_SUMMARY.tokens;              // 580
-const FRESH_TOKENS   = FRESH_TAIL_PLACEHOLDER.tokens;  // 480
+const FRESH_TOKENS = FRESH_TAIL_PLACEHOLDER.tokens; // 480
+const SUMMARY_TOKENS = D2_SUMMARY.tokens + D1_SUMMARY_4.tokens + SUMMARY_16.tokens; // 840+530+290
 
-// XML snippet shown at phase 2 — matches the architecture.md format exactly
+// XML wire format for the D2 summary — shown at phase 2
 const XML_LINES = [
-  { text: '<summary',                                            color: 'var(--color-summary-d1)' },
-  { text: '  id="sum_d1_01" kind="condensed" depth="1"',        color: 'var(--color-summary)' },
-  { text: '  descendant_count="32"',                            color: 'var(--color-summary)' },
-  { text: '  earliest_at="..." latest_at="...">',               color: 'var(--color-summary)' },
-  { text: '  <parents>',                                        color: 'var(--color-summary-d1)' },
-  { text: '    <summary_ref id="sum_01" />',                    color: 'var(--color-muted)' },
-  { text: '    <summary_ref id="sum_02" />  …',                 color: 'var(--color-muted)' },
-  { text: '  </parents>',                                       color: 'var(--color-summary-d1)' },
-  { text: '  <content>',                                        color: 'var(--color-summary-d1)' },
-  { text: '    Project arc: OAuth2 + RBAC…',                    color: 'var(--color-text)' },
-  { text: '    Expand for details about:',                      color: 'var(--color-fresh)' },
-  { text: '      exact token flows, middleware config…',        color: 'var(--color-fresh)' },
-  { text: '  </content>',                                       color: 'var(--color-summary-d1)' },
-  { text: '</summary>',                                         color: 'var(--color-summary-d1)' },
+  { text: '<summary',                                              color: 'var(--color-summary-d1)' },
+  { text: '  id="sum_d2_01" kind="condensed" depth="2"',          color: 'var(--color-summary)' },
+  { text: '  descendant_count="128"',                             color: 'var(--color-summary)' },
+  { text: '  earliest_at="…" latest_at="…">',                     color: 'var(--color-summary)' },
+  { text: '  <parents>',                                          color: 'var(--color-summary-d1)' },
+  { text: '    <summary_ref id="sum_d1_01" />',                   color: 'var(--color-muted)' },
+  { text: '    <summary_ref id="sum_d1_02" />',                   color: 'var(--color-muted)' },
+  { text: '    <summary_ref id="sum_d1_03" />',                   color: 'var(--color-muted)' },
+  { text: '    <summary_ref id="sum_d1_04" />',                   color: 'var(--color-muted)' },
+  { text: '  </parents>',                                         color: 'var(--color-summary-d1)' },
+  { text: '  <content>',                                          color: 'var(--color-summary-d1)' },
+  { text: '    Full project arc (64 turns)…',                     color: 'var(--color-text)' },
+  { text: '    Expand for details about:',                        color: 'var(--color-fresh)' },
+  { text: '      specific commits, error messages,',              color: 'var(--color-fresh)' },
+  { text: '      config values, decision rationale…',             color: 'var(--color-fresh)' },
+  { text: '  </content>',                                         color: 'var(--color-summary-d1)' },
+  { text: '</summary>',                                           color: 'var(--color-summary-d1)' },
+];
+
+// Summary items shown in the evictable prefix
+const SUMMARY_ITEMS = [
+  {
+    summary: D2_SUMMARY,
+    depthLabel: 'DEPTH 2',
+    depthColor: 'var(--color-budget-over)',
+    showXml: true,
+  },
+  {
+    summary: D1_SUMMARY_4,
+    depthLabel: 'DEPTH 1',
+    depthColor: 'var(--color-summary-d1)',
+    showXml: false,
+  },
+  {
+    summary: SUMMARY_16,
+    depthLabel: 'DEPTH 0',
+    depthColor: 'var(--color-summary)',
+    showXml: false,
+  },
 ];
 
 export default function AssemblerPanel({ phase }) {
@@ -111,61 +136,69 @@ export default function AssemblerPanel({ phase }) {
           EVICTABLE PREFIX
         </div>
 
-        {/* D1 summary — collapses to XML view at phase 2 */}
-        <div
-          style={{
-            background: 'rgba(0,0,0,0.15)',
-            border: '1px solid rgba(240,136,62,0.28)',
-            borderLeft: '2px solid var(--color-summary)',
-          }}
-          className="rounded px-2.5 py-2 flex flex-col gap-1 shrink-0"
-        >
-          {/* Collapsed header — always visible */}
-          <div className="flex items-center gap-1.5">
-            <span
-              style={{ color: 'var(--color-summary-d1)', borderColor: 'var(--color-summary-d1)' }}
-              className="rounded border px-1 py-0 text-[8px] font-bold"
-            >
-              DEPTH 1
-            </span>
-            <span style={{ color: 'var(--color-summary-d1)' }} className="text-[9px] font-mono">
-              {D1_SUMMARY.id}
-            </span>
-            <span style={{ color: 'var(--color-muted)' }} className="text-[9px] ml-auto tabular-nums">
-              {SUMMARY_TOKENS} tok
-            </span>
-          </div>
-
-          {/* Summary descriptor — shown when XML is hidden */}
-          <div style={{
-            color: 'var(--color-muted)',
-            opacity: showXml ? 0 : 1,
-            maxHeight: showXml ? 0 : '20px',
-            overflow: 'hidden',
-            transition: 'opacity 0.25s ease, max-height 0.3s ease',
-          }} className="text-[9px] font-mono">
-            {D1_SUMMARY.timeRange}
-          </div>
-
-          {/* XML wire format — expands at phase 2 */}
-          <div style={{
-            opacity: showXml ? 1 : 0,
-            maxHeight: showXml ? '200px' : 0,
-            overflow: 'hidden',
-            transition: 'opacity 0.35s ease 0.1s, max-height 0.4s cubic-bezier(0.16,1,0.3,1)',
-          }}>
-            <div
-              style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 4, marginTop: 4 }}
-              className="px-2 py-1.5 flex flex-col"
-            >
-              {XML_LINES.map((line, i) => (
-                <span key={i} style={{ color: line.color }} className="text-[8px] font-mono leading-relaxed whitespace-pre">
-                  {line.text}
-                </span>
-              ))}
+        {/* Summary items — D2, D1, D0 */}
+        {SUMMARY_ITEMS.map(({ summary, depthLabel, depthColor, showXml: isXmlItem }) => (
+          <div
+            key={summary.id}
+            style={{
+              background: 'rgba(0,0,0,0.15)',
+              border: '1px solid rgba(240,136,62,0.28)',
+              borderLeft: `2px solid ${depthColor}`,
+            }}
+            className="rounded px-2.5 py-2 flex flex-col gap-1 shrink-0"
+          >
+            <div className="flex items-center gap-1.5">
+              <span
+                style={{ color: depthColor, borderColor: depthColor }}
+                className="rounded border px-1 py-0 text-[8px] font-bold"
+              >
+                {depthLabel}
+              </span>
+              <span style={{ color: depthColor }} className="text-[9px] font-mono">
+                {summary.id}
+              </span>
+              <span style={{ color: 'var(--color-muted)' }} className="text-[9px] ml-auto tabular-nums">
+                {summary.tokens} tok
+              </span>
             </div>
+
+            {/* Time range — hidden when XML is showing for this item */}
+            <div style={{
+              color: 'var(--color-muted)',
+              opacity: isXmlItem && showXml ? 0 : 1,
+              maxHeight: isXmlItem && showXml ? 0 : '20px',
+              overflow: 'hidden',
+              transition: 'opacity 0.25s ease, max-height 0.3s ease',
+            }} className="text-[9px] font-mono">
+              {summary.timeRange}
+            </div>
+
+            {/* XML wire format — only on D2 item, expands at phase 2 */}
+            {isXmlItem && (
+              <div style={{
+                opacity: showXml ? 1 : 0,
+                maxHeight: showXml ? '300px' : 0,
+                overflow: 'hidden',
+                transition: 'opacity 0.35s ease 0.1s, max-height 0.45s cubic-bezier(0.16,1,0.3,1)',
+              }}>
+                <div
+                  style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 4, marginTop: 4 }}
+                  className="px-2 py-1.5 flex flex-col"
+                >
+                  {XML_LINES.map((line, i) => (
+                    <span
+                      key={i}
+                      style={{ color: line.color }}
+                      className="text-[8px] font-mono leading-relaxed whitespace-pre"
+                    >
+                      {line.text}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+        ))}
 
         {/* Fresh tail label */}
         <div style={{

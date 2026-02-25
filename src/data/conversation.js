@@ -70,6 +70,120 @@ export const D1_SUMMARY = {
   sourceIds: ['sum_01', 'sum_02', 'sum_03', 'sum_04'],
 };
 
+// ── Extended conversation (Turns 17–64) ─────────────────────────────────────
+// Used by the Assembler and Full Lifecycle sections.
+// Individual messages are not tracked for these turns; only summaries.
+
+/** Summaries 5–8: Turns 17–32 — deployment infrastructure phase. */
+export const SUMMARY_5 = {
+  id: 'sum_05', kind: 'summary', depth: 0,
+  tokens: 305, timeRange: 'Turns 17 – 20', descendantCount: 8,
+  snippet: 'Docker containerization: multi-stage builds, non-root user, health checks. docker-compose for local dev with hot reload.',
+  sourceIds: [],
+};
+export const SUMMARY_6 = {
+  id: 'sum_06', kind: 'summary', depth: 0,
+  tokens: 330, timeRange: 'Turns 21 – 24', descendantCount: 8,
+  snippet: 'Kubernetes deployment: Deployment + Service + Ingress manifests, HPA configured, rolling update strategy. Secrets managed via sealed-secrets.',
+  sourceIds: [],
+};
+export const SUMMARY_7 = {
+  id: 'sum_07', kind: 'summary', depth: 0,
+  tokens: 315, timeRange: 'Turns 25 – 28', descendantCount: 8,
+  snippet: 'Observability: Prometheus metrics endpoint, Grafana dashboards for latency/error rate/saturation. PagerDuty alert rules configured.',
+  sourceIds: [],
+};
+export const SUMMARY_8 = {
+  id: 'sum_08', kind: 'summary', depth: 0,
+  tokens: 300, timeRange: 'Turns 29 – 32', descendantCount: 8,
+  snippet: 'Performance profiling: p99 latency reduced 40% via query index and connection pool tuning. Flame graph identified N+1 in notification fanout.',
+  sourceIds: [],
+};
+
+/** D1 summary 2: Turns 17–32 — deployment and infrastructure. */
+export const D1_SUMMARY_2 = {
+  id: 'sum_d1_02', kind: 'condensed', depth: 1,
+  tokens: 545, timeRange: 'Turns 17 – 32', descendantCount: 32,
+  snippet: 'Infrastructure phase: containerized with Docker, deployed to Kubernetes with HPA. Full observability stack (Prometheus + Grafana). p99 latency reduced 40%.',
+  sourceIds: ['sum_05', 'sum_06', 'sum_07', 'sum_08'],
+};
+
+/** Summaries 9–12: Turns 33–48 — feature development phase. */
+export const SUMMARY_9 = {
+  id: 'sum_09', kind: 'summary', depth: 0,
+  tokens: 320, timeRange: 'Turns 33 – 36', descendantCount: 8,
+  snippet: 'User management UI: invite flow, role assignment, team hierarchy. Bulk operations with optimistic updates. WCAG AA accessibility audit passing.',
+  sourceIds: [],
+};
+export const SUMMARY_10 = {
+  id: 'sum_10', kind: 'summary', depth: 0,
+  tokens: 340, timeRange: 'Turns 37 – 40', descendantCount: 8,
+  snippet: 'Real-time notifications: WebSocket server, presence tracking, per-user channels. Reconnect logic with exponential backoff. Redis pub/sub backend.',
+  sourceIds: [],
+};
+export const SUMMARY_11 = {
+  id: 'sum_11', kind: 'summary', depth: 0,
+  tokens: 295, timeRange: 'Turns 41 – 44', descendantCount: 8,
+  snippet: 'Data export: CSV/JSON/XLSX via background jobs, signed S3 URLs, email delivery. Export history page with re-download links.',
+  sourceIds: [],
+};
+export const SUMMARY_12 = {
+  id: 'sum_12', kind: 'summary', depth: 0,
+  tokens: 310, timeRange: 'Turns 45 – 48', descendantCount: 8,
+  snippet: 'Admin dashboard: usage analytics, feature flags, impersonation mode. Audit log viewer with full-text search. Role-gated behind SUPERADMIN.',
+  sourceIds: [],
+};
+
+/** D1 summary 3: Turns 33–48 — feature development. */
+export const D1_SUMMARY_3 = {
+  id: 'sum_d1_03', kind: 'condensed', depth: 1,
+  tokens: 560, timeRange: 'Turns 33 – 48', descendantCount: 32,
+  snippet: 'Feature phase: user management UI, real-time notifications (WebSocket + Redis), data export pipeline, admin dashboard with audit log and feature flags.',
+  sourceIds: ['sum_09', 'sum_10', 'sum_11', 'sum_12'],
+};
+
+/** Summaries 13–16: Turns 49–64 — scaling and hardening phase. */
+export const SUMMARY_13 = {
+  id: 'sum_13', kind: 'summary', depth: 0,
+  tokens: 285, timeRange: 'Turns 49 – 52', descendantCount: 8,
+  snippet: 'Database optimization: partial indexes, BRIN index on event log, materialized views for analytics queries. Slow query log baseline established.',
+  sourceIds: [],
+};
+export const SUMMARY_14 = {
+  id: 'sum_14', kind: 'summary', depth: 0,
+  tokens: 300, timeRange: 'Turns 53 – 56', descendantCount: 8,
+  snippet: 'CDN and caching: CloudFront for static assets, stale-while-revalidate for API responses. Redis cache layer for user session and permission lookups.',
+  sourceIds: [],
+};
+export const SUMMARY_15 = {
+  id: 'sum_15', kind: 'summary', depth: 0,
+  tokens: 315, timeRange: 'Turns 57 – 60', descendantCount: 8,
+  snippet: 'Security hardening: penetration test findings resolved (IDOR, missing rate limit on password reset). CSP headers, HSTS preload, dependency audit clean.',
+  sourceIds: [],
+};
+export const SUMMARY_16 = {
+  id: 'sum_16', kind: 'summary', depth: 0,
+  tokens: 290, timeRange: 'Turns 61 – 64', descendantCount: 8,
+  snippet: 'Load testing: 10k concurrent users sustained at p99 < 200ms. Horizontal pod autoscaling validated. Runbook and on-call rotation documented.',
+  sourceIds: [],
+};
+
+/** D1 summary 4: Turns 49–64 — scaling and hardening. */
+export const D1_SUMMARY_4 = {
+  id: 'sum_d1_04', kind: 'condensed', depth: 1,
+  tokens: 530, timeRange: 'Turns 49 – 64', descendantCount: 32,
+  snippet: 'Scaling phase: DB indexes and materialized views, CDN + Redis caching, security audit clean. Load tested to 10k concurrent users at p99 < 200ms.',
+  sourceIds: ['sum_13', 'sum_14', 'sum_15', 'sum_16'],
+};
+
+/** Depth-2 condensed summary — synthesizes all four D1 summaries. */
+export const D2_SUMMARY = {
+  id: 'sum_d2_01', kind: 'condensed', depth: 2,
+  tokens: 840, timeRange: 'Turns 1 – 64', descendantCount: 128,
+  snippet: 'Full project arc (64 turns): auth system (OAuth2 + RBAC), containerized and deployed to Kubernetes, observability and performance tuning, full feature set shipped, security hardened and load tested to production scale.',
+  sourceIds: ['sum_d1_01', 'sum_d1_02', 'sum_d1_03', 'sum_d1_04'],
+};
+
 /**
  * Placeholder used during fast-forward mode to represent the current
  * fresh tail without tracking individual messages turn-by-turn.
