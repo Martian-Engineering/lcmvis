@@ -106,12 +106,20 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
   const d2GroupRef  = useRef(null);
   const d2EdgeRefs  = useRef({});  // paths d2 → each d1, keyed by d1.id
 
-  const prevD0CountRef = useRef(0);
-  const prevD1CountRef = useRef(0);
-  const prevD2CountRef = useRef(0);
+  const prevD0CountRef  = useRef(0);
+  const prevD1CountRef  = useRef(0);
+  const prevD2CountRef  = useRef(0);
+  // Track layout mode so we can reset counters when switching between layouts
+  const prevMultiD1Ref  = useRef(multiD1);
 
   // ── Animate newly added D0 summary nodes ────────────────────────────────
   useEffect(() => {
+    // Layout switch or count decrease — elements were remounted at opacity:0.
+    // Reset counter so all nodes animate in fresh.
+    if (multiD1 !== prevMultiD1Ref.current || d0Nodes.length < prevD0CountRef.current) {
+      prevMultiD1Ref.current = multiD1;
+      prevD0CountRef.current = 0;
+    }
     const incoming = d0Nodes.slice(prevD0CountRef.current);
     prevD0CountRef.current = d0Nodes.length;
 
@@ -124,13 +132,17 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
         { opacity: 1, scale: 1, duration: 0.5, delay: idx * 0.1, ease: 'back.out(1.4)' }
       );
     });
-  }, [d0Nodes]);
+  }, [d0Nodes, multiD1]);
 
   // ── Animate d1 nodes appearing ──────────────────────────────────────────
   useLayoutEffect(() => {
     if (d1Nodes.length === 0) {
       prevD1CountRef.current = 0;
       return;
+    }
+    // Layout switch or count decrease — reset so all nodes animate in fresh.
+    if (multiD1 !== prevMultiD1Ref.current || d1Nodes.length < prevD1CountRef.current) {
+      prevD1CountRef.current = 0;
     }
     if (d1Nodes.length <= prevD1CountRef.current) return;
 
@@ -197,6 +209,10 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
     if (d2Nodes.length === 0) {
       prevD2CountRef.current = 0;
       return;
+    }
+    // Scrolled back — reset so forward scroll re-animates correctly.
+    if (d2Nodes.length < prevD2CountRef.current) {
+      prevD2CountRef.current = 0;
     }
     if (d2Nodes.length <= prevD2CountRef.current) return;
     prevD2CountRef.current = d2Nodes.length;

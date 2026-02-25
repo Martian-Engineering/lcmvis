@@ -100,22 +100,6 @@ const STEPS = [
     body: 'The sub-agent synthesizes a precise answer from the original content and returns it to the main agent. Full fidelity. Bounded cost. The main context is unchanged — but it now has the exact information it needed from the very first messages of the conversation.',
   },
   {
-    title: 'From DAG to Model',
-    body: 'The tool calls are complete, but one question remains: how do summaries actually reach the model? Before every turn, an assembler runs. It reads the context items, resolves each summary to full text, and builds the exact message array the API receives.',
-  },
-  {
-    title: 'Two Zones',
-    body: 'The assembled context splits into two regions: a summary prefix drawn from the DAG, and a protected fresh tail that\'s always appended unconditionally — regardless of budget. The model always has verbatim recency for recent turns.',
-  },
-  {
-    title: 'Summaries as Structured Messages',
-    body: 'Summaries aren\'t injected as plain text — they arrive as user messages wrapped in XML. The model gets the summary ID, depth, time range, and descendant count as attributes. The "Expand for details about:" footer tells the model exactly what was compressed away, so it knows when to call lcm_expand_query.',
-  },
-  {
-    title: 'The Model\'s View',
-    body: 'This is what the model receives each turn: a compact summary of all prior history, followed by the verbatim recent conversation. Full coverage. Bounded cost. This is what makes long conversations tractable.',
-  },
-  {
     title: 'The Cycle Continues',
     body: 'As more turns accumulate, LCM keeps running. Each new cohort outside the fresh tail triggers a leaf pass. Each group of four leaf summaries triggers a depth-1 condensation. The DAG grows deeper.',
   },
@@ -188,19 +172,17 @@ function itemsForStep(s) {
       summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4],
     };
     case 10: case 11: case 12: case 13:
-    case 14: case 15: case 16: case 17:
-    // Assembler steps: self-contained panels; context window stays frozen.
-    case 18: case 19: case 20: case 21: return {
+    case 14: case 15: case 16: case 17: return {
       items: [sumItem(D1_SUMMARY), ftItem],
       summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4, D1_SUMMARY],
     };
-    // Section C steps: DAG grows; context window stays frozen at D1_SUMMARY + ftItem.
-    case 22: return {
+    // Section C steps: DAG grows; context stays hidden, DAG takes focus.
+    case 18: return {
       items: [sumItem(D1_SUMMARY), ftItem],
       summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4,
                   D1_SUMMARY, D1_SUMMARY_2, D1_SUMMARY_3, D1_SUMMARY_4],
     };
-    case 23: case 24: case 25: return {
+    case 19: case 20: case 21: return {
       items: [sumItem(D1_SUMMARY), ftItem],
       summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4,
                   D1_SUMMARY, D1_SUMMARY_2, D1_SUMMARY_3, D1_SUMMARY_4, D2_SUMMARY],
@@ -226,11 +208,10 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
   const [toolView,       setToolView]       = useState(null);
   const [expandPhase,    setExpandPhase]    = useState(0);
 
-  // Assembler visualization state (steps 18–21)
-  const [assemblerView,  setAssemblerView]  = useState(false);
-  const [assemblerPhase, setAssemblerPhase] = useState(0);
+  // Section C DAG focus mode (steps 18–21): keeps context hidden, DAG prominent
+  const [sectionCActive,  setSectionCActive]  = useState(false);
 
-  // DAG prompt labels state (steps 24–25)
+  // DAG prompt labels state (steps 20–21)
   const [dagPromptLabels, setDagPromptLabels] = useState(false);
 
 
@@ -263,12 +244,12 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
       step, items, summaries, usedTokens, compacting, fastForward,
       showFreshTail: step >= 3 || fastForward,
       toolView, expandPhase, dagHighlightIds, bannerText,
-      assemblerView, assemblerPhase,
+      sectionCActive,
       dagPromptLabels,
     });
   }, [step, items, summaries, usedTokens, compacting, fastForward,
       toolView, expandPhase, dagHighlightIds, bannerText,
-      assemblerView, assemblerPhase,
+      sectionCActive,
       dagPromptLabels, onStateChange]);
 
   // ── Collapse animation (delegated to SharedPanel) ─────────────────────────
@@ -309,15 +290,11 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
       setToolView(null);       setExpandPhase(0);
     }
 
-    // Assembler view driven by step number (steps 18–21)
-    if (s >= 18 && s <= 21) {
-      setAssemblerView(true);  setAssemblerPhase(s - 18);
-    } else {
-      setAssemblerView(false); setAssemblerPhase(0);
-    }
+    // Section C DAG focus mode (steps 18–21)
+    setSectionCActive(s >= 18 && s <= 21);
 
-    // DAG prompt labels (steps 24–25)
-    if (s >= 24 && s <= 25) {
+    // DAG prompt labels (steps 20–21)
+    if (s >= 20 && s <= 21) {
       setDagPromptLabels(true);
     } else {
       setDagPromptLabels(false);

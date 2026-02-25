@@ -15,7 +15,6 @@ import FreshTailPlaceholder from './FreshTailPlaceholder';
 import TokenBudget from './TokenBudget';
 import DagPanel from './DagPanel';
 import ToolPanel from './ToolPanel';
-import AssemblerPanel from './AssemblerPanel';
 import { TOTAL_BUDGET, FRESH_TAIL_COUNT } from '../data/conversation';
 
 // ── Traditional-mode constants ──────────────────────────────────────────────
@@ -160,8 +159,7 @@ const SharedPanel = forwardRef(function SharedPanel({
   const lcmExpandPhase      = lcmState?.expandPhase ?? 0;
   const lcmDagHighlightIds  = lcmState?.dagHighlightIds ?? [];
   const lcmBannerText       = lcmState?.bannerText ?? '';
-  const lcmAssemblerView    = lcmState?.assemblerView ?? false;
-  const lcmAssemblerPhase   = lcmState?.assemblerPhase ?? 0;
+  const lcmSectionCActive   = lcmState?.sectionCActive ?? false;
   const lcmDagPromptLabels  = lcmState?.dagPromptLabels ?? false;
 
   // Unified display values for the context window
@@ -176,8 +174,8 @@ const SharedPanel = forwardRef(function SharedPanel({
   const badgeText  = isTraditional ? 'TRADITIONAL' : 'LCM';
   const badgeColor = isTraditional ? 'var(--color-budget-over)' : 'var(--color-summary)';
 
-  // Context window collapses during tool and assembler steps
-  const ctxCollapsed = isLcm && (lcmToolView || lcmAssemblerView);
+  // Context window collapses during tool demo steps and Section C (DAG focus)
+  const ctxCollapsed = isLcm && (lcmToolView || lcmSectionCActive);
 
   // ── Animate each new item in ─────────────────────────────────────────────────
   // Items arrive one at a time via scene-side stagger, so this typically sees
@@ -396,11 +394,11 @@ const SharedPanel = forwardRef(function SharedPanel({
         </div>
       </div>
 
-      {/* ── DAG panel (LCM only — collapses during assembler steps) ────────── */}
+      {/* ── DAG panel (LCM only) ────────────────────────────────────────────── */}
       <div style={{
         flexShrink: 0,
-        height: isLcm && lcmSummaries.length > 0 && !lcmAssemblerView
-          ? (lcmToolView ? '48%' : '40%')
+        height: isLcm && lcmSummaries.length > 0
+          ? (lcmToolView ? '48%' : lcmSectionCActive ? '80%' : '40%')
           : 0,
         overflow: 'hidden',
         transition: 'height 0.55s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -426,17 +424,6 @@ const SharedPanel = forwardRef(function SharedPanel({
         )}
       </div>
 
-      {/* ── Assembler panel (LCM only — slides in for assembler steps 18–21) ─ */}
-      <div style={{
-        flexShrink: 0,
-        height: isLcm && lcmAssemblerView ? '46%' : 0,
-        overflow: 'hidden',
-        transition: 'height 0.55s cubic-bezier(0.16, 1, 0.3, 1)',
-      }}>
-        {isLcm && lcmAssemblerView && (
-          <AssemblerPanel phase={lcmAssemblerPhase} />
-        )}
-      </div>
 
     </div>
   );
