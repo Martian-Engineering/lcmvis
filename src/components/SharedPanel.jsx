@@ -86,38 +86,56 @@ const SharedPanel = forwardRef(function SharedPanel({
   const itemRefs         = useRef({});   // shared map: item id → DOM element
   const summaryCardRef   = useRef(null); // Traditional flat summary card
   const scrollRef        = useRef(null); // scrollable items container
-  const collapseAnimRef  = useRef(null);
-  const prevItemIdsRef   = useRef(new Set());
+  const collapseAnimRef   = useRef(null);
+  const prevItemIdsRef    = useRef(new Set());
+  const suppressStaggerRef = useRef(false);
 
   useEffect(() => { modeRef.current = mode; }, [mode]);
 
   // ── Imperative API for scenes ───────────────────────────────────────────────
   useImperativeHandle(ref, () => ({
     /**
-     * Animate context-window items out (height → 0), then call onComplete.
-     * Both TraditionalScene and CompactionScene call this for their
-     * collapse-and-replace transitions.
+     * Animate context-window items out (fade → collapse → swap).
+     * Two sequential phases: content fades to invisible, then the space
+     * collapses smoothly. onComplete fires after both phases finish.
+     * Stagger-in is suppressed for the next render so the replacement
+     * item appears without a flash.
      */
     animateCollapse(ids, onComplete) {
       const els = ids.map((id) => itemRefs.current[id]).filter(Boolean);
       if (!els.length) { onComplete(); return; }
 
-      // Snapshot heights before animating
       els.forEach((el) => gsap.set(el, { height: el.offsetHeight, overflow: 'hidden' }));
       if (collapseAnimRef.current) collapseAnimRef.current.kill();
 
-      const isTrad = modeRef.current === 'traditional';
-      collapseAnimRef.current = gsap.to(els, {
-        height: 0, opacity: 0, paddingTop: 0, paddingBottom: 0, marginBottom: 0,
-        duration: isTrad ? 0.22 : 0.28,
-        stagger: { amount: isTrad ? 0.35 : 0.3, from: isTrad ? 'start' : 'end' },
-        ease: 'power2.in',
+      const tl = gsap.timeline({
         onComplete: () => {
           els.forEach((el) => gsap.set(el, { clearProps: 'all' }));
           collapseAnimRef.current = null;
+          // Suppress stagger-in for the next render so the replacement
+          // item (summary) appears cleanly without a flash.
+          suppressStaggerRef.current = true;
           onComplete();
         },
       });
+
+      // Phase 1: fade content invisible
+      tl.to(els, {
+        opacity: 0,
+        duration: 0.3,
+        stagger: 0.03,
+        ease: 'power2.in',
+      });
+
+      // Phase 2: collapse the empty space
+      tl.to(els, {
+        height: 0, paddingTop: 0, paddingBottom: 0, marginBottom: 0,
+        duration: 0.25,
+        stagger: 0.02,
+        ease: 'power2.inOut',
+      });
+
+      collapseAnimRef.current = tl;
     },
   }));
 
@@ -160,6 +178,7 @@ const SharedPanel = forwardRef(function SharedPanel({
   // ── Animate each new item in ─────────────────────────────────────────────────
   // Items arrive one at a time via scene-side stagger, so this typically sees
   // 1 new item per invocation. Falls back to multi-item stagger for fast scrolls.
+  // Suppressed for one render after a collapse so replacement items appear clean.
   useEffect(() => {
     let currentIds;
     if (isTraditional) {
@@ -171,6 +190,13 @@ const SharedPanel = forwardRef(function SharedPanel({
     const newIds = [...currentIds].filter((id) => !prevItemIdsRef.current.has(id));
     prevItemIdsRef.current = currentIds;
     if (!newIds.length) return;
+
+    // After a collapse, skip the entrance animation so the replacement
+    // item (summary pill / flat summary card) appears without a flash.
+    if (suppressStaggerRef.current) {
+      suppressStaggerRef.current = false;
+      return;
+    }
 
     const frame = requestAnimationFrame(() => {
       const els = newIds.map((id) => {

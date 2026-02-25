@@ -34,7 +34,7 @@ const D0_Y  = 8;   // y when no d1
 // Message group
 const MSG_W   = 144;
 const MSG_H   = 42;
-const MSG_Y   = D0_Y + D0_H + 16;  // = 86
+const MSG_Y   = D0_Y + D0_H + 32;  // gap between summary and message group
 
 // d1 node
 const D1_W    = 220;
@@ -42,14 +42,14 @@ const D1_H    = 64;
 const D1_Y    = 8;
 
 // Summary position when d1 is present (shifted down to make room)
-const D0_Y_SHIFTED = D1_Y + D1_H + 18; // = 90
+const D0_Y_SHIFTED = D1_Y + D1_H + 32;
 
 // Message group y when d1 is present (third tier, below shifted summaries)
-const MSG_Y_WITH_D1 = D0_Y_SHIFTED + D0_H + 16; // = 168
+const MSG_Y_WITH_D1 = D0_Y_SHIFTED + D0_H + 32;
 
 // SVG heights
-const SVG_H_NO_D1   = MSG_Y + MSG_H + 12;          // = 140
-const SVG_H_WITH_D1 = MSG_Y_WITH_D1 + MSG_H + 12;  // = 222
+const SVG_H_NO_D1   = MSG_Y + MSG_H + 12;
+const SVG_H_WITH_D1 = MSG_Y_WITH_D1 + MSG_H + 12;
 
 // ── Component ───────────────────────────────────────────────────────────────
 export default function DagPanel({ summaries, highlightIds = [] }) {
@@ -275,19 +275,19 @@ export default function DagPanel({ summaries, highlightIds = [] }) {
               const msgX  = colX + (NODE_W - MSG_W) / 2;
               const msgCX = msgX + MSG_W / 2;
 
-              // Edge: summary → message group
+              // Edge: summary → message group (Bézier curves with generous control offsets)
               const summaryToMsg = [
                 `M ${nodeCX} ${d0Y + D0_H}`,
-                `C ${nodeCX} ${d0Y + D0_H + 20}`,
-                `  ${msgCX}  ${msgY - 20}`,
+                `C ${nodeCX} ${d0Y + D0_H + 28}`,
+                `  ${msgCX}  ${msgY - 28}`,
                 `  ${msgCX}  ${msgY}`,
               ].join(' ');
 
               // Edge: d1 → this summary (drawn via strokeDashoffset animation)
               const d1ToSummary = [
                 `M ${d1CX} ${D1_Y + D1_H}`,
-                `C ${d1CX} ${D1_Y + D1_H + 14}`,
-                `  ${nodeCX} ${d0Y - 14}`,
+                `C ${d1CX} ${D1_Y + D1_H + 24}`,
+                `  ${nodeCX} ${d0Y - 24}`,
                 `  ${nodeCX} ${d0Y}`,
               ].join(' ');
 

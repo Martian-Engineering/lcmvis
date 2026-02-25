@@ -101,9 +101,8 @@ export default function TraditionalScene({ onStateChange, onActivate, panelRef }
       if (prev < 2) {
         // Forward: show summarizing banner briefly, then collapse messages
         setSummarizing(true);
-        gsap.delayedCall(0.7, () => {
+        gsap.delayedCall(0.4, () => {
           setSummarizing(false);
-          // Delegate collapse animation to SharedPanel
           panelRef?.current?.animateCollapse(
             T_MESSAGES.map((m) => m.id),
             () => {

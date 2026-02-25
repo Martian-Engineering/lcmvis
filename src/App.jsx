@@ -56,9 +56,11 @@ export default function App() {
   // Only switched by ScrollTrigger activation — never by state-change effects.
   const [mode, setMode] = useState('traditional');
 
-  // Stable mode activators — called from ScrollTrigger handlers only
+  // Stable mode activators — called from ScrollTrigger handlers only.
+  // activateLcm clears tradState so stale Traditional content (e.g. the
+  // flat summary card) doesn't linger into the LCM section.
   const activateTrad = useCallback(() => setMode('traditional'), []);
-  const activateLcm  = useCallback(() => setMode('lcm'), []);
+  const activateLcm  = useCallback(() => { setMode('lcm'); setTradState(null); }, []);
 
   // State blobs from each scene, passed through to SharedPanel
   const [tradState, setTradState] = useState(null);
