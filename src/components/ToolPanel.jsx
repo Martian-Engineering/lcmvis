@@ -111,9 +111,10 @@ const EXPAND_RESPONSE = [
 
 // ── Component ────────────────────────────────────────────────────────────────────
 export default function ToolPanel({ view, expandPhase }) {
-  const grepRowRefs     = useRef([]);
-  const describeCardRef = useRef(null);
+  const grepRowRefs      = useRef([]);
+  const describeCardRef  = useRef(null);
   const overviewCardRefs = useRef([]);
+  const outputScrollRef  = useRef(null);
 
   // Overview: set initial opacity before paint, then stagger in
   useLayoutEffect(() => {
@@ -143,6 +144,12 @@ export default function ToolPanel({ view, expandPhase }) {
     if (!els.length) return;
     gsap.to(els, { opacity: 1, y: 0, duration: 0.32, stagger: 0.1, ease: 'power2.out', delay: 0.2 });
   }, [view]);
+
+  // Expand: scroll output to bottom when new phase content appears
+  useEffect(() => {
+    if (view !== 'expand' || !outputScrollRef.current) return;
+    outputScrollRef.current.scrollTop = outputScrollRef.current.scrollHeight;
+  }, [view, expandPhase]);
 
   // Describe: fade card in after mount
   useLayoutEffect(() => {
@@ -248,7 +255,7 @@ export default function ToolPanel({ view, expandPhase }) {
       </div>
 
       {/* ── Output ───────────────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col gap-2 overflow-y-auto min-h-0">
+      <div ref={outputScrollRef} className="flex-1 flex flex-col gap-2 overflow-y-auto min-h-0">
 
         {/* ── Describe output ─────────────────────────────────────────────── */}
         {isDescribe && (
