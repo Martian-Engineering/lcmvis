@@ -57,14 +57,8 @@ const D0_GRP_H = MSG_H;  // 42
 const D0_GRP_W = MSG_W;  // 144
 
 // ── Prompt label descriptions by depth ──────────────────────────────────────
-const PROMPT_LABELS = {
-  2: { color: 'var(--color-summary-d2)', text: 'Durable narrative: decisions in effect, completed work, milestone timeline' },
-  1: { color: 'var(--color-summary-d1)', text: 'Arc distillation: outcomes, what evolved, current state' },
-  0: { color: 'var(--color-summary)',    text: 'Leaf summary: exact decisions, rationale, technical details' },
-};
-
 // ── Component ───────────────────────────────────────────────────────────────
-export default function DagPanel({ summaries, highlightIds = [], showPromptLabels = false }) {
+export default function DagPanel({ summaries, highlightIds = [] }) {
   const d0Nodes = summaries.filter((s) => s.depth === 0);
   const d1Nodes = summaries.filter((s) => s.depth === 1);
   const d2Nodes = summaries.filter((s) => s.depth === 2);
@@ -647,31 +641,6 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
         </div>
       )}
 
-      {/* Prompt labels (shown below SVG when showPromptLabels is true) */}
-      {[2, 1, 0].map((depth) => {
-        const label = PROMPT_LABELS[depth];
-        const present = depthsPresent.has(depth);
-        return (
-          <div
-            key={depth}
-            style={{
-              opacity: showPromptLabels && present ? 1 : 0,
-              transition: 'opacity 0.45s ease',
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '6px',
-              pointerEvents: 'none',
-            }}
-          >
-            <span style={{ color: label.color, fontFamily: 'monospace', fontSize: '9px', fontWeight: 'bold', whiteSpace: 'nowrap', paddingTop: '1px' }}>
-              D{depth}
-            </span>
-            <span style={{ color: label.color, fontFamily: 'monospace', fontSize: '9px', lineHeight: '1.4' }}>
-              {label.text}
-            </span>
-          </div>
-        );
-      })}
     </div>
   );
 }

@@ -160,8 +160,6 @@ const SharedPanel = forwardRef(function SharedPanel({
   const lcmDagHighlightIds  = lcmState?.dagHighlightIds ?? [];
   const lcmBannerText       = lcmState?.bannerText ?? '';
   const lcmSectionCActive   = lcmState?.sectionCActive ?? false;
-  const lcmDagPromptLabels  = lcmState?.dagPromptLabels ?? false;
-
   // Unified display values for the context window
   const usedTokens  = isTraditional ? tradUsedTokens : lcmUsedTokens;
   const budgetTotal = isTraditional ? TRAD_BUDGET : TOTAL_BUDGET;
@@ -407,7 +405,6 @@ const SharedPanel = forwardRef(function SharedPanel({
           <DagPanel
             summaries={lcmSummaries}
             highlightIds={lcmDagHighlightIds}
-            showPromptLabels={lcmDagPromptLabels}
           />
         )}
       </div>

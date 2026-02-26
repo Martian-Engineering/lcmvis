@@ -8,9 +8,8 @@
  *   Sections 1–8   Compaction narration (80vh each)
  *   Scrub section   220vh; ScrollTrigger scrub drives summary 3 and 4
  *   Sections 9–10  Condensation threshold + pass (first D1)
- *   D1 scrub section 260vh; ScrollTrigger scrub grows D1 nodes from 1 to 4
- *   Sections 11–13 DAG growth, D2 condensation, depth-aware prompts
- *   Sections 14–21 Bounded context, tools overview, individual tool demos
+ *   Section 11     Depth-aware prompts (DAG shown at full D2 state)
+ *   Sections 12–19 Bounded context, tools overview, individual tool demos
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
@@ -41,9 +40,9 @@ const FULL_DAG_SUMMARIES = [
 
 // ── Narration copy ──────────────────────────────────────────────────────────
 // Steps 0–10: compaction basics through first condensation
-// Steps 11–13: DAG growth (D1 condensations, D2, depth-aware prompts)
-// Steps 14–15: bounded context + retrieval tools overview
-// Steps 16–21: individual tool demos
+// Step 11:    Depth-aware prompts (full D2 DAG shown)
+// Steps 12–13: bounded context + retrieval tools overview
+// Steps 14–19: individual tool demos
 const STEPS = [
   /* 0 */ {
     title: 'There\'s a better way.',
@@ -88,50 +87,43 @@ const STEPS = [
   },
   /* 10 */ {
     title: 'Condensation Pass',
-    body: 'The four summaries are sent to the model with a higher-level synthesis prompt. The result is a depth-1 summary: more abstract, more durable, covering the full arc.',
+    body: 'The four summaries are sent to the model with a higher-level synthesis prompt. The result is a depth-1 summary: more abstract, more durable, covering the full arc. As the conversation keeps growing, this process repeats — depth-1 nodes accumulate, trigger their own condensation, and a depth-2 node forms. The DAG grows deeper with the conversation.',
   },
-  // ── (D1 scrub section sits between 10 and 11) ──
+  // ── (D1 scrub section removed) ──
   /* 11 */ {
-    title: 'Depth-1 Condensations',
-    body: 'Three more depth-1 condensations have fired — one for each new block of turns. Four depth-1 nodes now cover the full arc. LCM is about to do something it has never done in this conversation before.',
+    title: 'Depth-Aware Prompts',
+    body: 'As the conversation grows, LCM builds a three-level summary tree. Each depth runs a different prompt. Leaf summaries capture specifics: decisions, rationale, exact technical details. Depth-1 distills the arc: what evolved, outcomes, current state. Depth-2 produces a durable narrative — decisions still in effect and a milestone timeline — the kind of context that stays useful for weeks.',
   },
   /* 12 */ {
-    title: 'Depth-2 Condensation',
-    body: 'Four depth-1 nodes at the same depth — the condensation threshold is crossed again. LCM fires a depth-2 pass, synthesizing all four into a single node covering 64 turns. The DAG is now three levels deep.',
+    title: 'A Bounded, Lossless Context',
+    body: 'The conversation has grown considerably, yet the context remains tight and compact. Nothing was discarded. Every message lives in the DAG.',
+    epilogue: 'But how does the model actually access the information in the DAG?',
   },
   /* 13 */ {
-    title: 'Depth-Aware Prompts',
-    body: 'Each depth runs a different prompt. Leaf summaries capture specifics: decisions, rationale, exact technical details. Depth-1 distills the arc: what evolved, outcomes, current state. Depth-2 produces a durable narrative — decisions still in effect and a milestone timeline — the kind of context that stays useful for weeks.',
-  },
-  /* 14 */ {
-    title: 'A Bounded, Lossless Context',
-    body: 'The conversation has grown considerably, yet the context remains tight and compact. Nothing was discarded. Every message lives in the DAG — but how does the model actually access it?',
-  },
-  /* 15 */ {
     title: 'Retrieval Tools',
     body: 'LCM ships with a set of tools that give the agent structured access to the summary DAG. The agent can inspect nodes, search across depths, and expand any summary back to its source messages — all without loading the full history into context.',
   },
-  /* 16 */ {
+  /* 14 */ {
     title: 'Tool: lcm_describe',
     body: 'Before searching, the agent can inspect any node directly with lcm_describe. It returns the node\'s token count, time range, depth, and child IDs — a structural map of the DAG before any retrieval begins.',
   },
-  /* 17 */ {
+  /* 15 */ {
     title: 'Tool: lcm_grep',
     body: 'lcm_grep performs full-text search across every node in the DAG — raw messages and summaries alike. Results come back ranked with node IDs, depth labels, and matching snippets. The agent pinpoints exactly where a topic lives.',
   },
-  /* 18 */ {
+  /* 16 */ {
     title: 'Tool: lcm_expand_query',
     body: 'When a summary isn\'t enough — when the agent needs the original details, not just an abstraction — it calls lcm_expand_query. This is the heart of lossless recall: full-fidelity access to any summarized section, without pulling all those tokens back into the main context.',
   },
-  /* 19 */ {
+  /* 17 */ {
     title: 'Bounded Sub-Agent',
     body: 'lcm_expand_query issues a delegation grant: a scoped authorization token with a conversation scope and token cap. It spawns a dedicated sub-agent carrying that grant. The sub-agent\'s context expands for this task. The main agent\'s context is unchanged.',
   },
-  /* 20 */ {
+  /* 18 */ {
     title: 'Walking the DAG',
     body: 'The sub-agent walks the summary DAG downward — reading the depth-1 node, expanding into the relevant summary, then fetching the underlying source messages. Only what\'s needed is retrieved, bounded by the grant\'s token cap.',
   },
-  /* 21 */ {
+  /* 19 */ {
     title: 'Focused Answer',
     body: 'Full source fidelity with bounded cost. The sub-agent synthesizes a precise answer from the original content and returns it to the main agent. The main context is unchanged — but it now has the exact information it needed from the very first messages of the conversation.',
   },
@@ -201,26 +193,14 @@ function itemsForStep(s) {
       items: [sumItem(D1_SUMMARY), ftItem],
       summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4, D1_SUMMARY],
     };
-    // ── (D1 scrub sits here) ──
-    // ── D1 condensations: 4 D1s visible, no D2 yet ──
+    // ── Depth-aware prompts: full DAG with D2 shown ──
     case 11: return {
-      items: [sumItem(D1_SUMMARY), ftItem],
-      summaries: [
-        SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4,
-        SUMMARY_5, SUMMARY_6, SUMMARY_7, SUMMARY_8,
-        SUMMARY_9, SUMMARY_10, SUMMARY_11, SUMMARY_12,
-        SUMMARY_13, SUMMARY_14, SUMMARY_15, SUMMARY_16,
-        D1_SUMMARY, D1_SUMMARY_2, D1_SUMMARY_3, D1_SUMMARY_4,
-      ],
-    };
-    // ── D2 condensation + depth-aware prompts ──
-    case 12: case 13: return {
-      items: [sumItem(D1_SUMMARY), ftItem],
+      items: [sumItem(D2_SUMMARY), ftItem],
       summaries: FULL_DAG_SUMMARIES,
     };
     // ── Bounded context + tools: full DAG in summaries, D2 in context ──
-    case 14: case 15: case 16: case 17: case 18:
-    case 19: case 20: case 21: return {
+    case 12: case 13: case 14: case 15: case 16:
+    case 17: case 18: case 19: return {
       items: [sumItem(D2_SUMMARY), ftItem],
       summaries: FULL_DAG_SUMMARIES,
     };
@@ -238,29 +218,21 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
 
   const narrationRefs  = useRef([]);
   const scrubRef       = useRef(null);   // D0 scrub (between steps 8 and 9)
-  const scrubD1Ref     = useRef(null);   // D1 scrub (between steps 10 and 11)
   const prevStepRef    = useRef(-1);
   const staggerQueue   = useRef([]);
 
-  // Tool visualization state (steps 15–21: overview at 15, individual tools 16–21)
+  // Tool visualization state (steps 13–19: overview at 13, individual tools 14–19)
   const [toolView,       setToolView]       = useState(null);
   const [expandPhase,    setExpandPhase]    = useState(0);
 
-  // Section C DAG focus mode (steps 11–13): keeps context hidden, DAG prominent
+  // Section C DAG focus mode (step 11): keeps context hidden, DAG prominent
   const [sectionCActive,  setSectionCActive]  = useState(false);
 
-  // DAG prompt labels state (steps 12–13)
-  const [dagPromptLabels, setDagPromptLabels] = useState(false);
 
 
   // D0 scrub milestone flags
   const sum3Added = useRef(false);
   const sum4Added = useRef(false);
-
-  // D1 scrub milestone flags
-  const d1_2Added = useRef(false);
-  const d1_3Added = useRef(false);
-  const d1_4Added = useRef(false);
 
   const usedTokens = sumTokens(items);
 
@@ -288,12 +260,10 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
       showFreshTail: step >= 3 || fastForward,
       toolView, expandPhase, dagHighlightIds, bannerText,
       sectionCActive,
-      dagPromptLabels,
     });
   }, [step, items, summaries, usedTokens, compacting, fastForward,
       toolView, expandPhase, dagHighlightIds, bannerText,
-      sectionCActive,
-      dagPromptLabels, onStateChange]);
+      sectionCActive, onStateChange]);
 
   // ── Collapse animation (delegated to SharedPanel) ─────────────────────────
   const animateCollapse = useCallback((ids, onComplete) => {
@@ -316,34 +286,27 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
     setFastForward(false);
     setCompacting(s === 4 || s === 7);
 
-    // Tool view driven by step number (steps 15–21)
-    if (s === 15) {
+    // Tool view driven by step number (steps 13–19)
+    if (s === 13) {
       setToolView('overview'); setExpandPhase(0);
-    } else if (s === 16) {
+    } else if (s === 14) {
       setToolView('describe'); setExpandPhase(0);
-    } else if (s === 17) {
+    } else if (s === 15) {
       setToolView('grep');     setExpandPhase(0);
-    } else if (s === 18) {
+    } else if (s === 16) {
       setToolView('expand');   setExpandPhase(1);
-    } else if (s === 19) {
+    } else if (s === 17) {
       setToolView('expand');   setExpandPhase(2);
-    } else if (s === 20) {
+    } else if (s === 18) {
       setToolView('expand');   setExpandPhase(3);
-    } else if (s === 21) {
+    } else if (s === 19) {
       setToolView('expand');   setExpandPhase(3);
     } else {
       setToolView(null);       setExpandPhase(0);
     }
 
-    // Section C DAG focus mode (steps 11–13)
-    setSectionCActive(s >= 11 && s <= 13);
-
-    // DAG prompt labels (steps 12–13: D2 condensation + depth-aware prompts)
-    if (s >= 12 && s <= 13) {
-      setDagPromptLabels(true);
-    } else {
-      setDagPromptLabels(false);
-    }
+    // Section C DAG focus mode (steps 11–12: depth-aware prompts + bounded context)
+    setSectionCActive(s === 11 || s === 12);
 
     // Compaction collapse animations (forward only)
     if (s === 5 && prev < 5) {
@@ -493,106 +456,6 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
     return () => trigger.kill();
   }, [onActivate]);
 
-  // ── D1 scrub section ScrollTrigger (grows D1 nodes from 1 to 4) ──────────
-  useEffect(() => {
-    const el = scrubD1Ref.current;
-    if (!el) return;
-
-    // Base summaries when entering the D1 scrub (matches step 10 state)
-    const baseSummaries = [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4, D1_SUMMARY];
-
-    const trigger = ScrollTrigger.create({
-      trigger: el,
-      start:   'top 60%',
-      end:     'bottom 60%',
-      scrub:   0.6,
-
-      onEnter: () => {
-        onActivate?.();
-        d1_2Added.current = false;
-        d1_3Added.current = false;
-        d1_4Added.current = false;
-        setFastForward(true);
-        setSectionCActive(true);
-        setStep(-1);
-        setCompacting(false);
-        // Start with single D1 (post-condensation state)
-        setItems([sumItem(D1_SUMMARY), ftItem]);
-        setSummaries(baseSummaries);
-      },
-
-      onLeaveBack: () => {
-        onActivate?.();
-        d1_2Added.current = false;
-        d1_3Added.current = false;
-        d1_4Added.current = false;
-        setFastForward(false);
-        setSectionCActive(false);
-        const t = itemsForStep(10);
-        setItems(t.items);
-        setSummaries(t.summaries);
-      },
-
-      onLeave: () => { setFastForward(false); },
-
-      onUpdate: (self) => {
-        // Milestone at 30%: cohort 2 — D0s sum_05–08 + D1_SUMMARY_2
-        if (self.progress >= 0.3 && !d1_2Added.current) {
-          d1_2Added.current = true;
-          setSummaries((prev) =>
-            prev.some((s) => s.id === D1_SUMMARY_2.id)
-              ? prev
-              : [...prev, SUMMARY_5, SUMMARY_6, SUMMARY_7, SUMMARY_8, D1_SUMMARY_2]
-          );
-        }
-        if (self.progress < 0.3 && d1_2Added.current) {
-          d1_2Added.current = false;
-          d1_3Added.current = false;
-          d1_4Added.current = false;
-          setSummaries(baseSummaries);
-        }
-
-        // Milestone at 55%: cohort 3 — D0s sum_09–12 + D1_SUMMARY_3
-        if (self.progress >= 0.55 && !d1_3Added.current) {
-          d1_3Added.current = true;
-          setSummaries((prev) =>
-            prev.some((s) => s.id === D1_SUMMARY_3.id)
-              ? prev
-              : [...prev, SUMMARY_9, SUMMARY_10, SUMMARY_11, SUMMARY_12, D1_SUMMARY_3]
-          );
-        }
-        if (self.progress < 0.55 && d1_3Added.current) {
-          d1_3Added.current = false;
-          d1_4Added.current = false;
-          setSummaries((prev) => prev.filter((s) =>
-            ![SUMMARY_9, SUMMARY_10, SUMMARY_11, SUMMARY_12,
-              SUMMARY_13, SUMMARY_14, SUMMARY_15, SUMMARY_16,
-              D1_SUMMARY_3, D1_SUMMARY_4].some((r) => r.id === s.id)
-          ));
-        }
-
-        // Milestone at 80%: cohort 4 — D0s sum_13–16 + D1_SUMMARY_4
-        if (self.progress >= 0.8 && !d1_4Added.current) {
-          d1_4Added.current = true;
-          setSummaries((prev) =>
-            prev.some((s) => s.id === D1_SUMMARY_4.id)
-              ? prev
-              : [...prev, SUMMARY_13, SUMMARY_14, SUMMARY_15, SUMMARY_16, D1_SUMMARY_4]
-          );
-        }
-        if (self.progress < 0.8 && d1_4Added.current) {
-          d1_4Added.current = false;
-          setSummaries((prev) => prev.filter((s) =>
-            ![SUMMARY_13, SUMMARY_14, SUMMARY_15, SUMMARY_16,
-              D1_SUMMARY_4].some((r) => r.id === s.id)
-          ));
-        }
-      },
-    });
-
-    return () => trigger.kill();
-  }, [onActivate]);
-
   // ── D0 fast-forward card (sticky inside the D0 scrub section) ─────────────
   function FastForwardCard() {
     const summaryIds = summaries.map((s) => s.id);
@@ -627,53 +490,6 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
             return (
               <div key={s.id} style={{
                 color: present ? 'var(--color-summary)' : 'var(--color-border)',
-                transition: 'color 0.4s',
-              }} className="text-xs flex items-center gap-2">
-                <span>{present ? '●' : '○'}</span>
-                <span>{s.id} · {s.timeRange}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  // ── D1 fast-forward card (sticky inside the D1 scrub section) ─────────────
-  function FastForwardD1Card() {
-    const summaryIds = summaries.map((s) => s.id);
-    return (
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-2">
-          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-            <div key={i} style={{
-              background: 'var(--color-border)',
-              width: '6px', height: '6px',
-            }} className="rounded-full" />
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
-          <span style={{
-            color: 'var(--color-summary-d1)',
-            borderColor: 'var(--color-summary-d1)',
-          }} className="rounded border px-2 py-0.5 text-[10px] font-bold tracking-widest">
-            ⏩ FAST FORWARD
-          </span>
-        </div>
-        <h2 style={{ color: 'var(--color-text)' }} className="text-2xl font-bold leading-tight m-0">
-          The Cycle Continues
-        </h2>
-        <p style={{ color: 'var(--color-muted)', lineHeight: '1.7' }} className="text-sm m-0">
-          As more turns accumulate, LCM keeps running. Each new cohort outside
-          the fresh tail triggers a leaf pass. Each group of four leaf summaries
-          triggers a depth-1 condensation. Watch the DAG grow as you scroll.
-        </p>
-        <div className="flex flex-col gap-1.5">
-          {[D1_SUMMARY_2, D1_SUMMARY_3, D1_SUMMARY_4].map((s) => {
-            const present = summaryIds.includes(s.id);
-            return (
-              <div key={s.id} style={{
-                color: present ? 'var(--color-summary-d1)' : 'var(--color-border)',
                 transition: 'color 0.4s',
               }} className="text-xs flex items-center gap-2">
                 <span>{present ? '●' : '○'}</span>
@@ -746,17 +562,7 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
         );
       })}
 
-      {/* D1 fast-forward scrub section (grows D1 nodes from 1 to 4) */}
-      <div
-        ref={scrubD1Ref}
-        style={{ height: '260vh', position: 'relative', padding: '0 3.5rem' }}
-      >
-        <div style={{ position: 'sticky', top: '38vh' }}>
-          <FastForwardD1Card />
-        </div>
-      </div>
-
-      {/* Sections 11–22 (DAG growth, bounded context, tools) */}
+      {/* Sections 11–19 (depth-aware prompts, bounded context, tools) */}
       {STEPS.slice(11).map((s, i) => {
         const globalIdx = i + 11;
         return (
@@ -766,7 +572,52 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
             className="flex items-center"
             style={{ minHeight: '80vh', padding: '0 3.5rem' }}
           >
-            <Narration title={s.title} body={s.body} step={globalIdx} totalSteps={TOTAL_STEPS} />
+            <div className="flex flex-col gap-4">
+              <Narration title={s.title} body={s.body} step={globalIdx} totalSteps={TOTAL_STEPS} />
+              {globalIdx === 11 && (
+                <div className="flex flex-col gap-2" style={{ marginTop: '4px' }}>
+                  {[
+                    { depth: 2, color: 'var(--color-summary-d2)', text: 'Durable narrative: decisions in effect, completed work, milestone timeline' },
+                    { depth: 1, color: 'var(--color-summary-d1)', text: 'Arc distillation: outcomes, what evolved, current state' },
+                    { depth: 0, color: 'var(--color-summary)',    text: 'Leaf summary: exact decisions, rationale, technical details' },
+                  ].map(({ depth, color, text }) => (
+                    <div key={depth} style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+                      <span style={{ color, fontFamily: 'monospace', fontSize: '11px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                        D{depth}
+                      </span>
+                      <span style={{ color, fontSize: '12px', lineHeight: '1.5' }}>
+                        {text}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {globalIdx === 12 && (
+                <>
+                  <div className="flex flex-col gap-2" style={{ marginTop: '4px' }}>
+                    {[
+                      { depth: 0, color: 'var(--color-summary)',    range: 'minutes' },
+                      { depth: 1, color: 'var(--color-summary-d1)', range: 'hours'   },
+                      { depth: 2, color: 'var(--color-summary-d2)', range: 'days'    },
+                      { depth: 3, color: 'var(--color-muted)',      range: 'weeks'   },
+                      { depth: 4, color: 'var(--color-muted)',      range: 'months'  },
+                    ].map(({ depth, color, range }) => (
+                      <div key={depth} style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+                        <span style={{ color, fontFamily: 'monospace', fontSize: '11px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                          D{depth}
+                        </span>
+                        <span style={{ color, fontSize: '12px', lineHeight: '1.5' }}>
+                          {range}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <p style={{ color: 'var(--color-muted)', lineHeight: '1.7', fontSize: '0.875rem', margin: 0 }}>
+                    {s.epilogue}
+                  </p>
+                </>
+              )}
+            </div>
           </div>
         );
       })}
