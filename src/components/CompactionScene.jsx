@@ -44,12 +44,12 @@ const STEPS = [
     body: 'LCM always protects the most recent raw messages — the "fresh tail." These are never compacted. Everything older is eligible for summarization. In this simplified example the fresh tail is 4 messages; in real-world use it would be much larger.',
   },
   {
-    title: 'Compaction Triggers',
+    title: 'Incremental Compaction',
     body: 'When raw messages outside the fresh tail exceed 2,000 tokens, LCM automatically fires incremental compaction. This happens asynchronously — your conversation isn\'t interrupted. And because source messages are never lost in LCM, compaction is always safe.',
   },
   {
     title: 'Summary Compaction',
-    body: 'The eligible chunk is sent to the model with a structured prompt. A summary replaces the source messages in the conversation, but the references to the source messages are preserved.',
+    body: 'The eligible chunk is sent to the model with a structured prompt. A summary replaces the source messages in the conversation, but the references to the source messages are preserved. We\'ll discuss how these source messages are accessed later when we discuss expansion.',
   },
   {
     title: 'The Conversation Continues',
@@ -73,19 +73,19 @@ const STEPS = [
   },
   {
     title: 'A Bounded, Lossless Context',
-    body: 'The conversation has grown enormous, yet the context stays bounded. Nothing was discarded. Every message lives in the DAG — but how does the model actually access it?',
+    body: 'The conversation has grown considerably, yet the context remains tight and compact. Nothing was discarded. Every message lives in the DAG — but how does the model actually access it?',
   },
   {
-    title: 'lcm_describe',
+    title: 'Tool: lcm_describe',
     body: 'Before searching, the agent can inspect any node directly with lcm_describe. It returns the node\'s token count, time range, depth, and child IDs — a structural map of the DAG before any retrieval begins.',
   },
   {
-    title: 'lcm_grep',
+    title: 'Tool: lcm_grep',
     body: 'lcm_grep performs full-text search across every node in the DAG — raw messages and summaries alike. Results come back ranked with node IDs, depth labels, and matching snippets. The agent pinpoints exactly where a topic lives.',
   },
   {
-    title: 'lcm_expand_query',
-    body: 'When a summary hit isn\'t enough — when the agent needs the original details, not just an abstraction — it calls lcm_expand_query. This is the heart of lossless recall: full-fidelity access to any summarized section, without pulling all those tokens back into the main context.',
+    title: 'Tool: lcm_expand_query',
+    body: 'When a summary isn\'t enough — when the agent needs the original details, not just an abstraction — it calls lcm_expand_query. This is the heart of lossless recall: full-fidelity access to any summarized section, without pulling all those tokens back into the main context.',
   },
   {
     title: 'Bounded Sub-Agent',
@@ -97,7 +97,7 @@ const STEPS = [
   },
   {
     title: 'Focused Answer',
-    body: 'The sub-agent synthesizes a precise answer from the original content and returns it to the main agent. Full fidelity. Bounded cost. The main context is unchanged — but it now has the exact information it needed from the very first messages of the conversation.',
+    body: 'Full source fidelity with bounded cost. The sub-agent synthesizes a precise answer from the original content and returns it to the main agent. The main context is unchanged — but it now has the exact information it needed from the very first messages of the conversation.',
   },
   {
     title: 'The Cycle Continues',

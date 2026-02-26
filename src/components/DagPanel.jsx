@@ -305,8 +305,8 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
             Summary DAG
           </h3>
           <span style={{ color: 'var(--color-muted)' }} className="text-[10px]">
+            {hasD2 ? `${d2Nodes.length} d2 · ` : ''}
             {d1Nodes.length} d1 · {d0Nodes.length} d0
-            {hasD2 ? ` · ${d2Nodes.length} d2` : ''}
           </span>
         </div>
 
@@ -333,7 +333,7 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
                   fill="var(--color-summary-d2)"
                   fontSize={9} fontWeight="bold" fontFamily="monospace"
                 >
-                  DEPTH 2 · {d2.tokens} tok
+                  SUMMARY · DEPTH 2 · {d2.tokens} tok
                 </text>
                 <text x={d2X + 10} y={D2_Y + 30}
                   fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
@@ -415,7 +415,7 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
                       fill="var(--color-summary-d1)"
                       fontSize={9} fontWeight="bold" fontFamily="monospace"
                     >
-                      DEPTH 1 · {d1.tokens} tok
+                      SUMMARY · DEPTH 1 · {d1.tokens} tok
                     </text>
                     <text x={colX + 9} y={d1RowY + 29}
                       fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
@@ -514,8 +514,8 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
           Summary DAG
         </h3>
         <span style={{ color: 'var(--color-muted)' }} className="text-[10px]">
-          {d0Nodes.length} {d0Nodes.length === 1 ? 'summary' : 'summaries'}
-          {hasD1 ? ` · ${d1Nodes.length} d1` : ''}
+          {hasD1 ? `${d1Nodes.length} d1 · ` : ''}
+          {d0Nodes.length} d0
         </span>
       </div>
 
@@ -611,7 +611,7 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
                   fill="var(--color-summary-d1)"
                   fontSize={9} fontWeight="bold" fontFamily="monospace"
                 >
-                  DEPTH 1 · {d1.tokens} tok
+                  SUMMARY · DEPTH 1 · {d1.tokens} tok
                 </text>
                 <text x={d1X + 10} y={D1_Y + 30}
                   fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
@@ -681,7 +681,7 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
                       fill="var(--color-summary)"
                       fontSize={9} fontWeight="bold" fontFamily="monospace"
                     >
-                      SUMMARY · {s.tokens} tok
+                      SUMMARY · DEPTH 0 · {s.tokens} tok
                     </text>
                     <text x={colX + 9} y={d0Y + 29}
                       fill="var(--color-muted)" fontSize={9} fontFamily="monospace"

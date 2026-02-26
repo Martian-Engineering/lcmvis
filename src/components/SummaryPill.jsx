@@ -5,8 +5,8 @@
 import { forwardRef } from 'react';
 
 const DEPTH_META = {
-  0: { color: 'var(--color-summary)', bg: 'rgba(240,136,62,0.07)', label: 'SUMMARY' },
-  1: { color: 'var(--color-summary-d1)',   bg: 'rgba(255,123,114,0.07)', label: 'DEPTH 1' },
+  0: { color: 'var(--color-summary)', bg: 'rgba(240,136,62,0.07)', label: 'SUMMARY · DEPTH 0' },
+  1: { color: 'var(--color-summary-d1)',   bg: 'rgba(255,123,114,0.07)', label: 'SUMMARY · DEPTH 1' },
 };
 
 const fallbackMeta = { color: 'var(--color-muted)', bg: 'rgba(125,133,144,0.07)', label: 'SUMMARY' };

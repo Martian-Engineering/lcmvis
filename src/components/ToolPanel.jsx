@@ -39,7 +39,7 @@ const GREP_RESULTS = [
   },
   {
     id: 'sum_01',
-    label: 'SUMMARY',
+    label: 'SUMMARY · DEPTH 0',
     color: 'var(--color-summary)',
     borderFaint: 'rgba(240,136,62,0.2)',
     timeRange: 'Turns 1–4',
@@ -47,7 +47,7 @@ const GREP_RESULTS = [
   },
   {
     id: 'sum_d1_01',
-    label: 'DEPTH 1',
+    label: 'SUMMARY · DEPTH 1',
     color: 'var(--color-summary-d1)',
     borderFaint: 'rgba(255,123,114,0.2)',
     timeRange: 'Turns 1–16',
@@ -176,7 +176,7 @@ export default function ToolPanel({ view, expandPhase }) {
                   style={{ color: 'var(--color-summary-d1)', borderColor: 'var(--color-summary-d1)' }}
                   className="rounded border px-1 py-0 text-[8px] font-bold shrink-0"
                 >
-                  DEPTH 1
+                  SUMMARY · DEPTH 1
                 </span>
                 <span style={{ color: 'var(--color-summary-d1)' }} className="text-[10px] font-mono font-semibold">
                   {DESCRIBE_NODE.id}
