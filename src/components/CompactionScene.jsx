@@ -7,7 +7,7 @@
  *   Section 0     Transition ("There's a better way")
  *   Sections 1–8  Compaction narration (80vh each)
  *   Scrub section 220vh; ScrollTrigger scrub drives summary 3 and 4
- *   Sections 9–17 Condensation, bounded context, tool demos
+ *   Sections 9–18 Condensation, bounded context, tools intro, tool demos
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
@@ -74,6 +74,10 @@ const STEPS = [
   {
     title: 'A Bounded, Lossless Context',
     body: 'The conversation has grown considerably, yet the context remains tight and compact. Nothing was discarded. Every message lives in the DAG — but how does the model actually access it?',
+  },
+  {
+    title: 'Retrieval Tools',
+    body: 'LCM ships with a set of tools that give the agent structured access to the summary DAG. The agent can inspect nodes, search across depths, and expand any summary back to its source messages — all without loading the full history into context.',
   },
   {
     title: 'Tool: lcm_describe',
@@ -171,18 +175,18 @@ function itemsForStep(s) {
       items: [sumItem(SUMMARY_1),sumItem(SUMMARY_2),sumItem(SUMMARY_3),sumItem(SUMMARY_4), ftItem],
       summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4],
     };
-    case 10: case 11: case 12: case 13:
-    case 14: case 15: case 16: case 17: return {
+    case 10: case 11: case 12: case 13: case 14:
+    case 15: case 16: case 17: case 18: return {
       items: [sumItem(D1_SUMMARY), ftItem],
       summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4, D1_SUMMARY],
     };
     // Section C steps: DAG grows; context stays hidden, DAG takes focus.
-    case 18: return {
+    case 19: return {
       items: [sumItem(D1_SUMMARY), ftItem],
       summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4,
                   D1_SUMMARY, D1_SUMMARY_2, D1_SUMMARY_3, D1_SUMMARY_4],
     };
-    case 19: case 20: case 21: return {
+    case 20: case 21: case 22: return {
       items: [sumItem(D1_SUMMARY), ftItem],
       summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4,
                   D1_SUMMARY, D1_SUMMARY_2, D1_SUMMARY_3, D1_SUMMARY_4, D2_SUMMARY],
@@ -204,14 +208,14 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
   const prevStepRef    = useRef(-1);
   const staggerQueue   = useRef([]);
 
-  // Tool visualization state (steps 12–17)
+  // Tool visualization state (steps 13–18)
   const [toolView,       setToolView]       = useState(null);
   const [expandPhase,    setExpandPhase]    = useState(0);
 
-  // Section C DAG focus mode (steps 18–21): keeps context hidden, DAG prominent
+  // Section C DAG focus mode (steps 19–22): keeps context hidden, DAG prominent
   const [sectionCActive,  setSectionCActive]  = useState(false);
 
-  // DAG prompt labels state (steps 20–21)
+  // DAG prompt labels state (steps 21–22)
   const [dagPromptLabels, setDagPromptLabels] = useState(false);
 
 
@@ -273,28 +277,28 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
     setFastForward(false);
     setCompacting(s === 4 || s === 7);
 
-    // Tool view driven by step number (steps 12–17)
-    if (s === 12) {
+    // Tool view driven by step number (steps 13–18)
+    if (s === 13) {
       setToolView('describe'); setExpandPhase(0);
-    } else if (s === 13) {
-      setToolView('grep');     setExpandPhase(0);
     } else if (s === 14) {
-      setToolView('expand');   setExpandPhase(1);
+      setToolView('grep');     setExpandPhase(0);
     } else if (s === 15) {
-      setToolView('expand');   setExpandPhase(2);
+      setToolView('expand');   setExpandPhase(1);
     } else if (s === 16) {
-      setToolView('expand');   setExpandPhase(3);
+      setToolView('expand');   setExpandPhase(2);
     } else if (s === 17) {
+      setToolView('expand');   setExpandPhase(3);
+    } else if (s === 18) {
       setToolView('expand');   setExpandPhase(3);
     } else {
       setToolView(null);       setExpandPhase(0);
     }
 
-    // Section C DAG focus mode (steps 18–21)
-    setSectionCActive(s >= 18 && s <= 21);
+    // Section C DAG focus mode (steps 19–22)
+    setSectionCActive(s >= 19 && s <= 22);
 
-    // DAG prompt labels (steps 20–21)
-    if (s >= 20 && s <= 21) {
+    // DAG prompt labels (steps 21–22)
+    if (s >= 21 && s <= 22) {
       setDagPromptLabels(true);
     } else {
       setDagPromptLabels(false);
@@ -539,7 +543,7 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
         </div>
       </div>
 
-      {/* Sections 9–17 */}
+      {/* Sections 9–18 */}
       {STEPS.slice(9).map((s, i) => {
         const globalIdx = i + 9;
         return (
