@@ -208,7 +208,7 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
   const prevStepRef    = useRef(-1);
   const staggerQueue   = useRef([]);
 
-  // Tool visualization state (steps 13–18)
+  // Tool visualization state (steps 12–18: overview at 12, individual tools 13–18)
   const [toolView,       setToolView]       = useState(null);
   const [expandPhase,    setExpandPhase]    = useState(0);
 
@@ -277,8 +277,10 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
     setFastForward(false);
     setCompacting(s === 4 || s === 7);
 
-    // Tool view driven by step number (steps 13–18)
-    if (s === 13) {
+    // Tool view driven by step number (steps 12–18)
+    if (s === 12) {
+      setToolView('overview'); setExpandPhase(0);
+    } else if (s === 13) {
       setToolView('describe'); setExpandPhase(0);
     } else if (s === 14) {
       setToolView('grep');     setExpandPhase(0);

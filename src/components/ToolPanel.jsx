@@ -2,11 +2,30 @@
  * ToolPanel — simulated lcm_describe, lcm_grep, and lcm_expand_query tool call visualizations.
  *
  * Props:
- *   view        — 'describe' | 'grep' | 'expand'
+ *   view        — 'overview' | 'describe' | 'grep' | 'expand'
  *   expandPhase — 1..3 (expand only: 1=grant+spawn+d1read, 2=summary expand, 3=synthesis done)
  */
 import gsap from 'gsap';
 import { useEffect, useLayoutEffect, useRef } from 'react';
+
+// ── Overview data ───────────────────────────────────────────────────────────────
+const TOOL_OVERVIEW = [
+  {
+    name: 'lcm_describe',
+    color: 'var(--color-summary)',
+    description: 'Inspect any node in the DAG. Returns token count, time range, depth, child IDs, and a content snippet — a structural map before retrieval begins.',
+  },
+  {
+    name: 'lcm_grep',
+    color: 'var(--color-summary)',
+    description: 'Full-text search across every node — raw messages and summaries alike. Results ranked with node IDs, depth labels, and matching snippets.',
+  },
+  {
+    name: 'lcm_expand_query',
+    color: 'var(--color-summary-d1)',
+    description: 'Expand any summary back to its source messages via a bounded sub-agent. Full-fidelity recall without loading the full history into the main context.',
+  },
+];
 
 // ── Describe simulation data ────────────────────────────────────────────────────
 const DESCRIBE_NODE = {
@@ -79,8 +98,23 @@ const EXPAND_RESPONSE = [
 
 // ── Component ────────────────────────────────────────────────────────────────────
 export default function ToolPanel({ view, expandPhase }) {
-  const grepRowRefs    = useRef([]);
+  const grepRowRefs     = useRef([]);
   const describeCardRef = useRef(null);
+  const overviewCardRefs = useRef([]);
+
+  // Overview: set initial opacity before paint, then stagger in
+  useLayoutEffect(() => {
+    if (view !== 'overview') return;
+    const els = overviewCardRefs.current.filter(Boolean);
+    gsap.set(els, { opacity: 0, y: 10 });
+  }, [view]);
+
+  useEffect(() => {
+    if (view !== 'overview') return;
+    const els = overviewCardRefs.current.filter(Boolean);
+    if (!els.length) return;
+    gsap.to(els, { opacity: 1, y: 0, duration: 0.35, stagger: 0.12, ease: 'power2.out', delay: 0.15 });
+  }, [view]);
 
   // Grep: set initial opacity before paint to avoid React/GSAP style conflict
   useLayoutEffect(() => {
@@ -108,10 +142,58 @@ export default function ToolPanel({ view, expandPhase }) {
     gsap.to(describeCardRef.current, { opacity: 1, y: 0, duration: 0.38, delay: 0.2, ease: 'power2.out' });
   }, [view]);
 
+  const isOverview = view === 'overview';
   const isDescribe = view === 'describe';
   const isGrep     = view === 'grep';
   const isExpand   = view === 'expand';
 
+  // ── Overview: early return with dedicated layout ─────────────────────────
+  if (isOverview) {
+    return (
+      <div
+        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+        className="rounded-xl p-3 flex flex-col gap-3 h-full overflow-hidden"
+      >
+        {/* Header */}
+        <div className="flex items-center gap-2 shrink-0">
+          <span
+            style={{ color: 'var(--color-summary)', borderColor: 'var(--color-summary)' }}
+            className="rounded border px-1.5 py-0.5 text-[9px] font-bold tracking-widest shrink-0"
+          >
+            LCM TOOLS
+          </span>
+          <span style={{ color: 'var(--color-muted)' }} className="text-[10px]">
+            3 retrieval primitives
+          </span>
+        </div>
+
+        {/* Tool cards — staggered in via GSAP */}
+        <div className="flex-1 flex flex-col gap-2.5 overflow-y-auto min-h-0">
+          {TOOL_OVERVIEW.map((tool, i) => (
+            <div
+              key={tool.name}
+              ref={(el) => { overviewCardRefs.current[i] = el; }}
+              style={{
+                background: 'rgba(0,0,0,0.15)',
+                border: `1px solid color-mix(in srgb, ${tool.color} 30%, transparent)`,
+                borderLeft: `2px solid ${tool.color}`,
+              }}
+              className="rounded px-3 py-2.5 flex flex-col gap-1.5"
+            >
+              <span style={{ color: tool.color }} className="text-[11px] font-mono font-semibold">
+                {tool.name}
+              </span>
+              <p style={{ color: 'var(--color-muted)' }} className="m-0 text-[10px] leading-relaxed">
+                {tool.description}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Individual tool views ──────────────────────────────────────────────────
   const toolName = isDescribe ? 'lcm_describe' : isGrep ? 'lcm_grep' : 'lcm_expand_query';
 
   const command = isDescribe
