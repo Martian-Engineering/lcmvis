@@ -17,10 +17,14 @@
  * Animations (GSAP):
  *   - New D0 nodes: back.out scale-in
  *   - First D1: three-phase (pulse D0 rects → D1 scales in → edges draw)
+ *   - Collapse transition (D1_2 appears): msg groups fade → D0 nodes
+ *     scale down → D1 width contracts → React re-renders collapsed →
+ *     new D1s scale in. Uses visualExpandedD1Id state that lags behind
+ *     expandedD1Id to keep expanded DOM alive during the GSAP sequence.
  *   - Additional D1s: individual back.out scale-in
  *   - D2: three-phase (pulse D1 rects → D2 scales in → edges draw)
  */
-import { useEffect, useLayoutEffect, useRef, useMemo } from 'react';
+import { useEffect, useLayoutEffect, useRef, useMemo, useState } from 'react';
 import gsap from 'gsap';
 
 // ── Layout constants ────────────────────────────────────────────────────────
@@ -86,9 +90,33 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
   // When multiple D1s appear, all collapse.
   const expandedD1Id = d1Nodes.length <= 1 ? (d1Nodes[0]?.id ?? null) : null;
 
+  // Visual expansion state — lags behind expandedD1Id during collapse animation
+  // so GSAP can animate the transition before React swaps to collapsed layout.
+  const [visualExpandedD1Id, setVisualExpandedD1Id] = useState(expandedD1Id);
+  const collapsingRef = useRef(false);  // true while collapse animation is running
+
+  // ── Sync visual expansion state (during render, not in effect) ─────────
+  // React-approved "adjusting state based on props" pattern: setState during
+  // render triggers a synchronous re-render before commit, no cascading.
+  if (expandedD1Id !== null && visualExpandedD1Id !== expandedD1Id) {
+    // Expanding or first D1 appearing — sync immediately
+    setVisualExpandedD1Id(expandedD1Id);
+  } else if (expandedD1Id === null && visualExpandedD1Id !== null && d1Nodes.length === 0) {
+    // All D1s removed — sync to null immediately (no animation needed)
+    setVisualExpandedD1Id(null);
+  } else if (expandedD1Id === null && visualExpandedD1Id !== null && d1Nodes.length > 1) {
+    // Multi-D1 collapse: check if the expanded group still exists in data
+    const groupStillExists = d1Groups.some((g) => g.d1?.id === visualExpandedD1Id);
+    if (!groupStillExists) {
+      // Group gone (data changed unexpectedly) — sync immediately
+      setVisualExpandedD1Id(null);
+    }
+  }
+
   // Refs for GSAP — D0
-  const d0GroupRefs = useRef({});  // summary <g> elements (for scale-in)
-  const d0RectRefs  = useRef({});  // summary <rect> elements (for pulse)
+  const d0GroupRefs  = useRef({});  // summary <g> elements (for scale-in)
+  const d0RectRefs   = useRef({});  // summary <rect> elements (for pulse)
+  const msgGroupRefs = useRef({});  // message group <g> wrappers (for fade during collapse)
 
   // Refs for GSAP — D1
   const d1GroupRefs = useRef({});  // d1 <g> elements, keyed by d1.id
@@ -104,6 +132,63 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
   const prevD2CountRef  = useRef(0);
   // Track expansion state to reset animation counters on layout change
   const prevExpandedRef = useRef(expandedD1Id);
+
+  // ── Collapse transition animation ─────────────────────────────────────
+  // Fires when expandedD1Id flips to null (multi-D1) but visual is still
+  // expanded. Runs a GSAP sequence, then sets visualExpandedD1Id = null
+  // to trigger React re-render to collapsed layout.
+  useLayoutEffect(() => {
+    // Only animate when going from expanded → multi-D1 collapsed
+    if (expandedD1Id !== null || visualExpandedD1Id === null || d1Nodes.length <= 1) return;
+
+    collapsingRef.current = true;
+
+    // Find the group that's currently visually expanded
+    const expandedGroup = d1Groups.find((g) => g.d1?.id === visualExpandedD1Id);
+    if (!expandedGroup) {
+      collapsingRef.current = false;
+      return;  // render-time sync handles the state update
+    }
+
+    // Gather animation targets from the expanded group's DOM elements
+    const msgEls  = expandedGroup.d0s.map((s) => msgGroupRefs.current[s.id]).filter(Boolean);
+    const d0Els   = expandedGroup.d0s.map((s) => d0GroupRefs.current[s.id]).filter(Boolean);
+    const edgeEls = expandedGroup.d0s.map((s) => d1EdgeRefs.current[s.id]).filter(Boolean);
+    const d1Rect  = d1RectRefs.current[visualExpandedD1Id];
+
+    // Target geometry: after collapse, D1 will be 1 column at colOffset 0
+    const targetD1W = NODE_W;
+    const targetD1X = X_PAD + (COL_W - NODE_W) / 2;
+
+    const tl = gsap.timeline({
+      // GSAP onComplete is async — runs after animation, not in effect body
+      onComplete: () => {
+        collapsingRef.current = false;
+        setVisualExpandedD1Id(null);
+      },
+    });
+
+    // Phase 1: message groups fade out
+    tl.to(msgEls, { opacity: 0, duration: 0.25, ease: 'power2.in' });
+
+    // Phase 2: D0 nodes scale down + fade, D1→D0 edges fade
+    tl.to(d0Els, {
+      opacity: 0, scale: 0.6, transformOrigin: '50% 50%',
+      duration: 0.3, ease: 'power2.in',
+    }, '-=0.05');
+    tl.to(edgeEls, { opacity: 0, duration: 0.2 }, '<');
+
+    // Phase 3: D1 width contracts from expanded span to column width
+    if (d1Rect) {
+      tl.to(d1Rect, {
+        attr: { width: targetD1W, x: targetD1X },
+        duration: 0.35, ease: 'power2.inOut',
+      }, '-=0.15');
+    }
+
+    // Cleanup: kill timeline if component re-renders before completion
+    return () => { tl.kill(); };
+  }, [expandedD1Id, visualExpandedD1Id, d1Nodes.length, d1Groups]);
 
   // ── Animate newly added D0 summary nodes ────────────────────────────────
   useEffect(() => {
@@ -132,6 +217,8 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
       prevD1CountRef.current = 0;
       return;
     }
+    // Skip during collapse — new D1s will animate after transition completes
+    if (collapsingRef.current) return;
     // Expansion state changed or count decrease — reset so nodes animate fresh
     if (expandedD1Id !== prevExpandedRef.current || d1Nodes.length < prevD1CountRef.current) {
       prevD1CountRef.current = 0;
@@ -255,18 +342,19 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
   // Each d1Group contributes columns: expanded → d0s.length, collapsed → 1.
   // colOffset tracks where each group starts in the overall column grid.
   const columnLayout = useMemo(() => {
-    // Build layout with cumulative column offsets using reduce (no mutation)
+    // Build layout with cumulative column offsets using reduce (no mutation).
+    // Uses visualExpandedD1Id so layout stays expanded during collapse animation.
     const { layouts } = d1Groups.reduce((acc, group) => {
       const expanded = group.d1 === null
         ? true  // virtual no-D1 group is always expanded
-        : group.d1.id === expandedD1Id;
+        : group.d1.id === visualExpandedD1Id;
       const numCols = expanded ? Math.max(group.d0s.length, 1) : 1;
       acc.layouts.push({ ...group, expanded, numCols, colOffset: acc.offset });
       acc.offset += numCols;
       return acc;
     }, { layouts: [], offset: 0 });
     return layouts;
-  }, [d1Groups, expandedD1Id]);
+  }, [d1Groups, visualExpandedD1Id]);
 
   const totalCols = columnLayout.reduce((sum, g) => sum + g.numCols, 0);
 
@@ -549,36 +637,39 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
                               ↳ {s.descendantCount} msgs
                             </text>
 
-                            {/* D0 → message group edge */}
-                            <path
-                              d={summaryToMsg}
-                              stroke="var(--color-border)"
-                              strokeWidth={1.5}
-                              fill="none"
-                              strokeDasharray="4 3"
-                            />
+                            {/* Message group wrapper (ref for collapse fade) */}
+                            <g ref={(el) => { msgGroupRefs.current[s.id] = el; }}>
+                              {/* D0 → message group edge */}
+                              <path
+                                d={summaryToMsg}
+                                stroke="var(--color-border)"
+                                strokeWidth={1.5}
+                                fill="none"
+                                strokeDasharray="4 3"
+                              />
 
-                            {/* Message group node */}
-                            <rect
-                              x={msgX} y={msgRowY}
-                              width={MSG_W} height={MSG_H}
-                              rx={6}
-                              fill="rgba(56,139,253,0.07)"
-                              stroke="var(--color-user)"
-                              strokeWidth={1}
-                              strokeDasharray="3 2"
-                            />
-                            <text x={msgX + 9} y={msgRowY + 16}
-                              fill="var(--color-user)"
-                              fontSize={9} fontWeight="bold" fontFamily="monospace"
-                            >
-                              {s.descendantCount} raw messages
-                            </text>
-                            <text x={msgX + 9} y={msgRowY + 30}
-                              fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
-                            >
-                              {s.timeRange}
-                            </text>
+                              {/* Message group node */}
+                              <rect
+                                x={msgX} y={msgRowY}
+                                width={MSG_W} height={MSG_H}
+                                rx={6}
+                                fill="rgba(56,139,253,0.07)"
+                                stroke="var(--color-user)"
+                                strokeWidth={1}
+                                strokeDasharray="3 2"
+                              />
+                              <text x={msgX + 9} y={msgRowY + 16}
+                                fill="var(--color-user)"
+                                fontSize={9} fontWeight="bold" fontFamily="monospace"
+                              >
+                                {s.descendantCount} raw messages
+                              </text>
+                              <text x={msgX + 9} y={msgRowY + 30}
+                                fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
+                              >
+                                {s.timeRange}
+                              </text>
+                            </g>
                           </g>
                         </g>
                       );
