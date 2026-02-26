@@ -105,7 +105,7 @@ const STEPS = [
   },
   /* 14 */ {
     title: 'Tool: lcm_describe',
-    body: 'Before searching, the agent can inspect any node directly with lcm_describe. It returns the node\'s token count, time range, depth, and child IDs — a structural map of the DAG before any retrieval begins.',
+    body: 'The agent first calls lcm_describe on the depth-2 node. It returns the subtree token count (descTok), source token count (srcTok), and a child manifest — everything the agent needs to plan its retrieval strategy before spending a single token on expansion.',
   },
   /* 15 */ {
     title: 'Tool: lcm_grep',
@@ -238,7 +238,7 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
 
   // DAG highlight IDs driven by tool view and expand phase
   const dagHighlightIds = useMemo(() => {
-    if (toolView === 'describe') return ['sum_d1_01'];
+    if (toolView === 'describe') return ['sum_d2_01'];
     if (toolView === 'grep')     return ['sum_d1_01', 'sum_01', 'msgs_sum_01'];
     if (toolView === 'expand') {
       if (expandPhase >= 3) return ['sum_d1_01', 'sum_01', 'msgs_sum_01'];

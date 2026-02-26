@@ -29,12 +29,20 @@ const TOOL_OVERVIEW = [
 
 // ── Describe simulation data ────────────────────────────────────────────────────
 const DESCRIBE_NODE = {
-  id:        'sum_d1_01',
-  depth:     1,
-  tokens:    580,
-  timeRange: 'Turns 1–16',
-  children:  ['sum_01', 'sum_02', 'sum_03', 'sum_04'],
-  snippet:   'Project arc: OAuth2 + RBAC auth built from scratch, audit logging and rate limiting added, CI/CD pipeline configured. N+1 query resolved.',
+  id:        'sum_d2_01',
+  depth:     2,
+  tokens:    840,
+  descTok:   20480,   // total tokens in subtree
+  srcTok:    18200,   // source message tokens below
+  timeRange: 'Turns 1–64',
+  children:  ['sum_d1_01', 'sum_d1_02', 'sum_d1_03', 'sum_d1_04'],
+  manifest: [
+    { id: 'sum_d1_01', tokens: 580, descTok: 5240, label: 'Turns 1–16' },
+    { id: 'sum_d1_02', tokens: 545, descTok: 5100, label: 'Turns 17–32' },
+    { id: 'sum_d1_03', tokens: 560, descTok: 5200, label: 'Turns 33–48' },
+    { id: 'sum_d1_04', tokens: 530, descTok: 4940, label: 'Turns 49–64' },
+  ],
+  snippet: 'Full project arc (64 turns): auth system (OAuth2 + RBAC), containerized and deployed to Kubernetes, observability and performance tuning, full feature set shipped, security hardened and load tested.',
 };
 
 // ── Grep simulation data ────────────────────────────────────────────────────────
@@ -197,7 +205,7 @@ export default function ToolPanel({ view, expandPhase }) {
   const toolName = isDescribe ? 'lcm_describe' : isGrep ? 'lcm_grep' : 'lcm_expand_query';
 
   const command = isDescribe
-    ? 'lcm_describe node_id="sum_d1_01"'
+    ? 'lcm_describe node_id="sum_d2_01"'
     : isGrep
     ? 'lcm_grep query="OAuth2" scope="both"'
     : 'lcm_expand_query(query="refresh token", prompt="How does the refresh token flow work?")';
@@ -247,20 +255,20 @@ export default function ToolPanel({ view, expandPhase }) {
               ref={describeCardRef}
               style={{
                 background: 'rgba(0,0,0,0.15)',
-                border: '1px solid rgba(255,123,114,0.25)',
-                borderLeft: '2px solid var(--color-summary-d1)',
+                border: '1px solid rgba(255,215,205,0.25)',
+                borderLeft: '2px solid var(--color-summary-d2)',
               }}
               className="rounded px-2.5 py-2 flex flex-col gap-1.5"
             >
               {/* Node badge row */}
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span
-                  style={{ color: 'var(--color-summary-d1)', borderColor: 'var(--color-summary-d1)' }}
+                  style={{ color: 'var(--color-summary-d2)', borderColor: 'var(--color-summary-d2)' }}
                   className="rounded border px-1 py-0 text-[8px] font-bold shrink-0"
                 >
-                  SUMMARY · DEPTH 1
+                  SUMMARY · DEPTH 2
                 </span>
-                <span style={{ color: 'var(--color-summary-d1)' }} className="text-[10px] font-mono font-semibold">
+                <span style={{ color: 'var(--color-summary-d2)' }} className="text-[10px] font-mono font-semibold">
                   {DESCRIBE_NODE.id}
                 </span>
                 <span style={{ color: 'var(--color-muted)' }} className="text-[9px] ml-auto tabular-nums">
@@ -272,23 +280,33 @@ export default function ToolPanel({ view, expandPhase }) {
                 {[
                   ['timeRange', DESCRIBE_NODE.timeRange],
                   ['depth',     String(DESCRIBE_NODE.depth)],
+                  ['descTok',   DESCRIBE_NODE.descTok.toLocaleString()],
+                  ['srcTok',    DESCRIBE_NODE.srcTok.toLocaleString()],
                 ].map(([k, v]) => (
                   <div key={k} className="flex gap-1.5">
                     <span style={{ color: 'var(--color-muted)' }} className="text-[9px] font-mono w-16 shrink-0">{k}</span>
                     <span style={{ color: 'var(--color-text)' }} className="text-[9px] font-mono">{v}</span>
                   </div>
                 ))}
-                {/* Children list */}
-                <div className="flex gap-1.5">
-                  <span style={{ color: 'var(--color-muted)' }} className="text-[9px] font-mono w-16 shrink-0">children</span>
-                  <div className="flex flex-col gap-0.5">
-                    {DESCRIBE_NODE.children.map((c) => (
-                      <span key={c} style={{ color: 'var(--color-summary)' }} className="text-[9px] font-mono">
-                        {c}
-                      </span>
-                    ))}
+              </div>
+              {/* Manifest — D1 children with token costs */}
+              <div className="flex flex-col gap-0.5 mt-0.5">
+                <span style={{ color: 'var(--color-muted)' }} className="text-[8px] font-mono tracking-widest mb-0.5">
+                  MANIFEST
+                </span>
+                {DESCRIBE_NODE.manifest.map((child) => (
+                  <div key={child.id} className="flex items-center gap-1.5">
+                    <span style={{ color: 'var(--color-summary-d1)' }} className="text-[9px] font-mono font-semibold">
+                      {child.id}
+                    </span>
+                    <span style={{ color: 'var(--color-muted)' }} className="text-[9px] font-mono">
+                      {child.label}
+                    </span>
+                    <span style={{ color: 'var(--color-muted)' }} className="text-[9px] font-mono ml-auto tabular-nums">
+                      {child.tokens} tok
+                    </span>
                   </div>
-                </div>
+                ))}
               </div>
               {/* Snippet */}
               <p style={{ color: 'var(--color-muted)' }} className="m-0 text-[9px] font-mono leading-relaxed line-clamp-3">
