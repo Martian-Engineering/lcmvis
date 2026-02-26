@@ -1,38 +1,26 @@
 /**
- * DagPanel — SVG-based DAG visualization.
+ * DagPanel — SVG-based DAG visualization with a unified column layout.
  *
- * Layout adapts to what's present:
+ * Unified model: each D1 node 'owns' a group of D0s (via sourceIds).
+ * Each group renders in one of two states:
+ *   - Expanded: individual D0 nodes + message groups (when single D1)
+ *   - Collapsed: dashed group box (when multiple D1s)
  *
- *   Summaries only (no d1):
- *     summary nodes (orange)       ← D0_Y
- *     message groups (blue dashed) ← MSG_Y
+ * Column layout adapts to content:
+ *   No D1:     [D0 columns] → [message groups]
+ *   Single D1: [D1 wide] → [D0 columns expanded] → [message groups]
+ *   Multi D1:  [D1 columns collapsed] → [D0 group boxes]
+ *   D2 + D1:   [D2 banner] → [D1 columns] → [D0 group boxes]
  *
- *   Single d1 (3-tier layout):
- *     d1 node (red-pink, wide)     ← D1_Y
- *     summary nodes                ← D0_Y_SHIFTED
- *     message groups               ← MSG_Y_WITH_D1
+ * D1 width scales with owned D0 count (animatable for transitions).
  *
- *   Multiple d1 nodes (multi-D1 layout):
- *     d1 nodes in columns          ← D1_Y
- *     (D0 and messages not shown)
- *
- *   D2 present (D2 + multi-D1 layout):
- *     d2 node (wide, spanning all d1 columns) ← D2_Y
- *     d1 nodes in columns                     ← D1_Y_BELOW_D2
- *
- * The SVG uses viewBox + width so it scales to fit the panel.
- * New summary nodes animate in via GSAP back.out.
- * The first d1 node triggers a three-phase animation:
- *   1. summary rects pulse (stroke brightens)
- *   2. d1 group scales in
- *   3. edges from d1 → each summary draw in via strokeDashoffset
- * Additional d1 nodes scale in individually (no pulse, no edges).
- * The d2 node triggers a three-phase animation:
- *   1. d1 rects pulse (stroke brightens)
- *   2. d2 group scales in
- *   3. edges from d2 → each d1 draw in via strokeDashoffset
+ * Animations (GSAP):
+ *   - New D0 nodes: back.out scale-in
+ *   - First D1: three-phase (pulse D0 rects → D1 scales in → edges draw)
+ *   - Additional D1s: individual back.out scale-in
+ *   - D2: three-phase (pulse D1 rects → D2 scales in → edges draw)
  */
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import gsap from 'gsap';
 
 // ── Layout constants ────────────────────────────────────────────────────────
@@ -47,47 +35,21 @@ const D0_Y  = 8;   // y when no d1
 // Message group
 const MSG_W   = 144;
 const MSG_H   = 42;
-const MSG_Y   = D0_Y + D0_H + 32;  // gap between summary and message group
-
-// d1 node (single-d1 layout — wide, centered)
-const D1_W    = 220;
+// D1 node
 const D1_H    = 64;
 const D1_Y    = 8;
 
-// Summary position when single d1 is present (shifted down to make room)
-const D0_Y_SHIFTED = D1_Y + D1_H + 32;
-
-// Message group y when single d1 is present (third tier, below shifted summaries)
-const MSG_Y_WITH_D1 = D0_Y_SHIFTED + D0_H + 32;
-
-// SVG heights for 2-tier and 3-tier (single-d1) layouts
-const SVG_H_NO_D1   = MSG_Y + MSG_H + 12;
-const SVG_H_WITH_D1 = MSG_Y_WITH_D1 + MSG_H + 12;
-
-// d2 node (same dimensions as d1 — centered wide node, not full-width banner)
-const D2_H = D1_H;  // 64 — matches d1 height for visual parity
-const D2_W = D1_W;  // 220 — matches d1 width for visual parity
+// D2 node (centered wide node spanning D1 columns)
+const D2_H = D1_H;   // 64
+const D2_W = 220;    // fixed width for D2 banner
 const D2_Y = 8;
 
-// Multi-d1 layout mirrors single-d1 layout with depth shifted up by one:
-//   single-d1:  [d1 centered wide] → [4 d0 columns] → [4 msg groups]
-//   multi-d1:   [4 d1 columns] → [4 d0 groups]
-//   d2+multi-d1:[d2 centered wide] → [4 d1 columns] → [4 d0 groups]
+// D1 row y when D2 present (shifted down below D2)
+const D1_Y_BELOW_D2 = D2_Y + D2_H + 32;  // = 104
 
-// D1 row y when d2 present (mirrors D0_Y_SHIFTED)
-const D1_Y_BELOW_D2   = D2_Y + D2_H + 32;  // = 104, same as D0_Y_SHIFTED
-
-// D0 group row y (mirrors MSG_Y positions)
-const D0_GRP_Y_NO_D2  = D1_Y + D1_H + 32;          // = 104 (mirrors MSG_Y)
-const D0_GRP_Y_WITH_D2 = D1_Y_BELOW_D2 + D1_H + 32; // = 200 (mirrors MSG_Y_WITH_D1)
-
-// D0 group box is same size as message group
+// Collapsed D0 group box (same size as message group)
 const D0_GRP_H = MSG_H;  // 42
 const D0_GRP_W = MSG_W;  // 144
-
-// SVG heights for multi-d1 layouts (3-tier each)
-const SVG_H_MULTI_D1 = D0_GRP_Y_NO_D2  + D0_GRP_H + 12;  // d1 + d0 groups
-const SVG_H_D2_D1    = D0_GRP_Y_WITH_D2 + D0_GRP_H + 12;  // d2 + d1 + d0 groups
 
 // ── Prompt label descriptions by depth ──────────────────────────────────────
 const PROMPT_LABELS = {
@@ -104,8 +66,25 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
   const hasD1   = d1Nodes.length > 0;
   const hasD2   = d2Nodes.length > 0;
 
-  // Multi-D1 layout: more than one d1 OR d2 present
-  const multiD1 = d1Nodes.length > 1 || hasD2;
+  // ── D1→D0 grouping ──────────────────────────────────────────────────────
+  // Each D1 owns D0s via sourceIds. Build groups: [{d1, d0s}, ...]
+  // When no D1 exists, create a virtual group so D0s always render.
+  const d1Groups = useMemo(() => {
+    if (d1Nodes.length === 0) {
+      // No D1 yet — single virtual group holding all D0s
+      return [{ d1: null, d0s: d0Nodes }];
+    }
+    const d0ById = Object.fromEntries(d0Nodes.map((s) => [s.id, s]));
+    return d1Nodes.map((d1) => ({
+      d1,
+      d0s: (d1.sourceIds || []).map((id) => d0ById[id]).filter(Boolean),
+    }));
+  }, [d0Nodes, d1Nodes]);
+
+  // Which D1's D0s are expanded (show individual nodes + message groups).
+  // Null means the virtual no-D1 group. When only one D1, it's expanded.
+  // When multiple D1s appear, all collapse.
+  const expandedD1Id = d1Nodes.length <= 1 ? (d1Nodes[0]?.id ?? null) : null;
 
   // Refs for GSAP — D0
   const d0GroupRefs = useRef({});  // summary <g> elements (for scale-in)
@@ -123,15 +102,14 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
   const prevD0CountRef  = useRef(0);
   const prevD1CountRef  = useRef(0);
   const prevD2CountRef  = useRef(0);
-  // Track layout mode so we can reset counters when switching between layouts
-  const prevMultiD1Ref  = useRef(multiD1);
+  // Track expansion state to reset animation counters on layout change
+  const prevExpandedRef = useRef(expandedD1Id);
 
   // ── Animate newly added D0 summary nodes ────────────────────────────────
   useEffect(() => {
-    // Layout switch or count decrease — elements were remounted at opacity:0.
-    // Reset counter so all nodes animate in fresh.
-    if (multiD1 !== prevMultiD1Ref.current || d0Nodes.length < prevD0CountRef.current) {
-      prevMultiD1Ref.current = multiD1;
+    // Expansion state changed or count decrease — reset so nodes animate fresh
+    if (expandedD1Id !== prevExpandedRef.current || d0Nodes.length < prevD0CountRef.current) {
+      prevExpandedRef.current = expandedD1Id;
       prevD0CountRef.current = 0;
     }
     const incoming = d0Nodes.slice(prevD0CountRef.current);
@@ -146,7 +124,7 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
         { opacity: 1, scale: 1, duration: 0.5, delay: idx * 0.1, ease: 'back.out(1.4)' }
       );
     });
-  }, [d0Nodes, multiD1]);
+  }, [d0Nodes, expandedD1Id]);
 
   // ── Animate d1 nodes appearing ──────────────────────────────────────────
   useLayoutEffect(() => {
@@ -154,8 +132,8 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
       prevD1CountRef.current = 0;
       return;
     }
-    // Layout switch or count decrease — reset so all nodes animate in fresh.
-    if (multiD1 !== prevMultiD1Ref.current || d1Nodes.length < prevD1CountRef.current) {
+    // Expansion state changed or count decrease — reset so nodes animate fresh
+    if (expandedD1Id !== prevExpandedRef.current || d1Nodes.length < prevD1CountRef.current) {
       prevD1CountRef.current = 0;
     }
     if (d1Nodes.length <= prevD1CountRef.current) return;
@@ -216,7 +194,7 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
         );
       });
     }
-  }, [d1Nodes, d0Nodes]);
+  }, [d1Nodes, d0Nodes, expandedD1Id]);
 
   // ── Animate D2 node appearing (three-phase) ──────────────────────────────
   useLayoutEffect(() => {
@@ -273,44 +251,74 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
       }, '-=0.15');
   }, [d2Nodes, d1Nodes]);
 
-  // ── SVG geometry ──────────────────────────────────────────────────────────
+  // ── Unified column layout ────────────────────────────────────────────────
+  // Each d1Group contributes columns: expanded → d0s.length, collapsed → 1.
+  // colOffset tracks where each group starts in the overall column grid.
+  const columnLayout = useMemo(() => {
+    // Build layout with cumulative column offsets using reduce (no mutation)
+    const { layouts } = d1Groups.reduce((acc, group) => {
+      const expanded = group.d1 === null
+        ? true  // virtual no-D1 group is always expanded
+        : group.d1.id === expandedD1Id;
+      const numCols = expanded ? Math.max(group.d0s.length, 1) : 1;
+      acc.layouts.push({ ...group, expanded, numCols, colOffset: acc.offset });
+      acc.offset += numCols;
+      return acc;
+    }, { layouts: [], offset: 0 });
+    return layouts;
+  }, [d1Groups, expandedD1Id]);
 
-  // Decide which layout to use
-  if (multiD1) {
-    // Multi-D1 layout mirrors single-D1 but one level up:
-    //   no-D2:   [4 d1 cols] → [4 d0 groups]   (like [4 d0 cols] → [4 msg groups])
-    //   with-D2: [d2 centered wide] → [4 d1 cols] → [4 d0 groups]
-    const d1RowY    = hasD2 ? D1_Y_BELOW_D2   : D1_Y;
-    const d0GrpY    = hasD2 ? D0_GRP_Y_WITH_D2 : D0_GRP_Y_NO_D2;
-    const svgW      = X_PAD * 2 + d1Nodes.length * COL_W;
-    const svgH      = hasD2 ? SVG_H_D2_D1 : SVG_H_MULTI_D1;
+  const totalCols = columnLayout.reduce((sum, g) => sum + g.numCols, 0);
 
-    // D2 node: same width as D1 in single-D1, centered over D1 columns
-    const firstD1CX = X_PAD + NODE_W / 2;
-    const lastD1CX  = X_PAD + (d1Nodes.length - 1) * COL_W + NODE_W / 2;
-    const d2CenterX = (firstD1CX + lastD1CX) / 2;
-    const d2X       = d2CenterX - D2_W / 2;
+  // Vertical tier positions
+  const d1RowY   = hasD2 ? D1_Y_BELOW_D2 : D1_Y;
+  const d0RowY   = hasD1 ? d1RowY + D1_H + 32 : D0_Y;
+  const msgRowY  = d0RowY + D0_H + 32;
 
-    // Which depths are present (for prompt labels)
-    const depthsPresent = new Set(summaries.map((s) => s.depth));
+  // SVG dimensions
+  const svgW = X_PAD * 2 + totalCols * COL_W;
+  // Height: tallest tier stack present
+  const bottomY = hasD1
+    ? (columnLayout.some((g) => g.expanded) ? msgRowY + MSG_H : d0RowY + D0_GRP_H)
+    : msgRowY + MSG_H;
+  const svgH = bottomY + 12;
 
-    return (
-      <div
-        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-        className="rounded-xl p-4 flex flex-col gap-2 h-full"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between shrink-0">
-          <h3 style={{ color: 'var(--color-text)' }} className="text-xs font-bold uppercase tracking-widest m-0">
-            Summary DAG
-          </h3>
-          <span style={{ color: 'var(--color-muted)' }} className="text-[10px]">
-            {hasD2 ? `${d2Nodes.length} d2 · ` : ''}
-            {d1Nodes.length} d1 · {d0Nodes.length} d0
-          </span>
+  // D2 node: centered over all D1 columns
+  const firstColCX = X_PAD + NODE_W / 2;
+  const lastColCX  = X_PAD + (totalCols - 1) * COL_W + NODE_W / 2;
+  const d2CenterX  = (firstColCX + lastColCX) / 2;
+  const d2X        = d2CenterX - D2_W / 2;
+
+  // Which depths are present (for prompt labels)
+  const depthsPresent = new Set(summaries.map((s) => s.depth));
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+  return (
+    <div
+      style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+      className="rounded-xl p-4 flex flex-col gap-2 h-full"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between shrink-0">
+        <h3 style={{ color: 'var(--color-text)' }} className="text-xs font-bold uppercase tracking-widest m-0">
+          Summary DAG
+        </h3>
+        <span style={{ color: 'var(--color-muted)' }} className="text-[10px]">
+          {hasD2 ? `${d2Nodes.length} d2 · ` : ''}
+          {hasD1 ? `${d1Nodes.length} d1 · ` : ''}
+          {d0Nodes.length} d0
+        </span>
+      </div>
+
+      {/* Empty state */}
+      {d0Nodes.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center">
+          <p style={{ color: 'var(--color-muted)' }} className="text-xs text-center leading-relaxed">
+            The DAG is empty.
+            <br />Summary nodes appear here as compaction runs.
+          </p>
         </div>
-
-        {/* SVG */}
+      ) : (
         <div className="flex-1 flex items-start overflow-x-auto min-h-0 pt-1">
           <svg
             viewBox={`0 0 ${svgW} ${svgH}`}
@@ -318,7 +326,7 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
             height={svgH}
             style={{ display: 'block', overflow: 'visible' }}
           >
-            {/* ── D2 node (same proportions as D1 in single-D1 layout) ── */}
+            {/* ── D2 node ──────────────────────────────────────────────── */}
             {hasD2 && d2Nodes.map((d2) => (
               <g key={d2.id} ref={d2GroupRef} style={{ opacity: 0 }}>
                 <rect
@@ -348,11 +356,11 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
               </g>
             ))}
 
-            {/* ── D2→D1 edges: fan from D2 center (mirrors D1→D0 in single-D1) ── */}
-            {hasD2 && d1Nodes.map((d1, i) => {
-              const d1ColX   = X_PAD + i * COL_W;
-              const d1NodeCX = d1ColX + NODE_W / 2;
-              const path = [
+            {/* ── D2→D1 edges ──────────────────────────────────────────── */}
+            {hasD2 && columnLayout.map((group) => {
+              if (!group.d1) return null;
+              const d1NodeCX = X_PAD + group.colOffset * COL_W + (group.numCols * COL_W) / 2;
+              const edgePath = [
                 `M ${d2CenterX} ${D2_Y + D2_H}`,
                 `C ${d2CenterX} ${D2_Y + D2_H + 24}`,
                 `  ${d1NodeCX} ${d1RowY - 24}`,
@@ -360,9 +368,9 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
               ].join(' ');
               return (
                 <path
-                  key={`d2edge-${d1.id}`}
-                  ref={(el) => { d2EdgeRefs.current[d1.id] = el; }}
-                  d={path}
+                  key={`d2edge-${group.d1.id}`}
+                  ref={(el) => { d2EdgeRefs.current[group.d1.id] = el; }}
+                  d={edgePath}
                   stroke="var(--color-summary-d2)"
                   strokeWidth={1.5}
                   fill="none"
@@ -371,371 +379,289 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
               );
             })}
 
-            {/* ── D1 nodes + D0 group boxes (mirrors D0 nodes + msg groups) ── */}
-            {d1Nodes.map((d1, i) => {
-              const colX    = X_PAD + i * COL_W;
-              const nodeCX  = colX + NODE_W / 2;
-              const grpX    = colX + (NODE_W - D0_GRP_W) / 2;
-              const grpCX   = grpX + D0_GRP_W / 2;
+            {/* ── D1 groups: each renders D1 node + D0 section ─────────── */}
+            {columnLayout.map((group) => {
+              // Group's pixel x-origin and width span
+              const groupX  = X_PAD + group.colOffset * COL_W;
+              const groupPx = group.numCols * COL_W;
 
-              // D1→D0group edge (dashed, same style as summary→message in single-D1)
-              const edgePath = [
-                `M ${nodeCX} ${d1RowY + D1_H}`,
-                `C ${nodeCX} ${d1RowY + D1_H + 28}`,
-                `  ${grpCX}  ${d0GrpY - 28}`,
-                `  ${grpCX}  ${d0GrpY}`,
-              ].join(' ');
+              // D1 node geometry: spans full group width with padding
+              const d1W  = groupPx - (group.numCols > 1 ? 2 * X_PAD : COL_W - NODE_W);
+              const d1X  = groupX + (groupPx - d1W) / 2;
+              const d1CX = groupX + groupPx / 2;
 
               return (
-                <g key={d1.id}>
-                  {/* D1→D0group edge */}
-                  <path
-                    d={edgePath}
-                    stroke="var(--color-border)"
-                    strokeWidth={1.5}
-                    fill="none"
-                    strokeDasharray="4 3"
-                  />
+                <g key={group.d1?.id ?? 'virtual'}>
+                  {/* ── D1 node ──────────────────────────────────────── */}
+                  {group.d1 && (
+                    <>
+                      {/* D1 highlight overlay */}
+                      <rect
+                        x={d1X - 3} y={d1RowY - 3}
+                        width={d1W + 6} height={D1_H + 6}
+                        rx={10}
+                        fill="rgba(255,123,114,0.08)"
+                        stroke="var(--color-summary-d1)"
+                        strokeWidth={2}
+                        style={{
+                          opacity: highlightIds.includes(group.d1.id) ? 1 : 0,
+                          transition: 'opacity 0.45s ease',
+                          pointerEvents: 'none',
+                        }}
+                      />
 
-                  {/* D1 node */}
-                  <g
-                    ref={(el) => { d1GroupRefs.current[d1.id] = el; }}
-                    style={{ opacity: 0 }}
-                  >
-                    <rect
-                      ref={(el) => { d1RectRefs.current[d1.id] = el; }}
-                      x={colX} y={d1RowY}
-                      width={NODE_W} height={D1_H}
-                      rx={6}
-                      fill="rgba(255,123,114,0.10)"
-                      stroke="var(--color-summary-d1)"
-                      strokeWidth={1}
-                    />
-                    <text x={colX + 9} y={d1RowY + 15}
-                      fill="var(--color-summary-d1)"
-                      fontSize={9} fontWeight="bold" fontFamily="monospace"
-                    >
-                      SUMMARY · DEPTH 1 · {d1.tokens} tok
-                    </text>
-                    <text x={colX + 9} y={d1RowY + 29}
-                      fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
-                    >
-                      {d1.id}
-                    </text>
-                    <text x={colX + 9} y={d1RowY + 43}
-                      fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
-                    >
-                      {d1.timeRange}
-                    </text>
-                    <text x={colX + 9} y={d1RowY + 57}
-                      fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
-                    >
-                      ↳ {d1.descendantCount} msgs
-                    </text>
-                  </g>
-
-                  {/* D0 group box (same style as message group in single-D1) */}
-                  <rect
-                    x={grpX} y={d0GrpY}
-                    width={D0_GRP_W} height={D0_GRP_H}
-                    rx={6}
-                    fill="rgba(240,136,62,0.07)"
-                    stroke="var(--color-summary)"
-                    strokeWidth={1}
-                    strokeDasharray="3 2"
-                  />
-                  <text x={grpX + 9} y={d0GrpY + 16}
-                    fill="var(--color-summary)"
-                    fontSize={9} fontWeight="bold" fontFamily="monospace"
-                  >
-                    4 summaries
-                  </text>
-                  <text x={grpX + 9} y={d0GrpY + 30}
-                    fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
-                  >
-                    {d1.timeRange}
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
-        </div>
-
-        {/* Prompt labels (shown below SVG when showPromptLabels is true) */}
-        {[2, 1, 0].map((depth) => {
-          const label = PROMPT_LABELS[depth];
-          const present = depthsPresent.has(depth);
-          return (
-            <div
-              key={depth}
-              style={{
-                opacity: showPromptLabels && present ? 1 : 0,
-                transition: 'opacity 0.45s ease',
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '6px',
-                pointerEvents: 'none',
-              }}
-            >
-              <span style={{ color: label.color, fontFamily: 'monospace', fontSize: '9px', fontWeight: 'bold', whiteSpace: 'nowrap', paddingTop: '1px' }}>
-                D{depth}
-              </span>
-              <span style={{ color: label.color, fontFamily: 'monospace', fontSize: '9px', lineHeight: '1.4' }}>
-                {label.text}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
-  // ── Single-D1 or no-D1 layout (backward compat) ──────────────────────────
-  const d0Y  = hasD1 ? D0_Y_SHIFTED : D0_Y;
-  const msgY = hasD1 ? MSG_Y_WITH_D1 : MSG_Y;
-  const svgH = hasD1 ? SVG_H_WITH_D1 : SVG_H_NO_D1;
-  const svgW = X_PAD * 2 + d0Nodes.length * COL_W;
-
-  // Single d1 node: centered over all summary columns
-  const firstD0CX = X_PAD + NODE_W / 2;
-  const lastD0CX  = X_PAD + (d0Nodes.length - 1) * COL_W + NODE_W / 2;
-  const d1CX      = (firstD0CX + lastD0CX) / 2;
-  const d1X       = d1CX - D1_W / 2;
-
-  // ── Render ─────────────────────────────────────────────────────────────────
-  return (
-    <div
-      style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-      className="rounded-xl p-4 flex flex-col gap-2 h-full"
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between shrink-0">
-        <h3 style={{ color: 'var(--color-text)' }} className="text-xs font-bold uppercase tracking-widest m-0">
-          Summary DAG
-        </h3>
-        <span style={{ color: 'var(--color-muted)' }} className="text-[10px]">
-          {hasD1 ? `${d1Nodes.length} d1 · ` : ''}
-          {d0Nodes.length} d0
-        </span>
-      </div>
-
-      {/* Empty state */}
-      {d0Nodes.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center">
-          <p style={{ color: 'var(--color-muted)' }} className="text-xs text-center leading-relaxed">
-            The DAG is empty.
-            <br />Summary nodes appear here as compaction runs.
-          </p>
-        </div>
-      ) : (
-        <div className="flex-1 flex items-start overflow-x-auto min-h-0 pt-1">
-          <svg
-            viewBox={`0 0 ${svgW} ${svgH}`}
-            width={svgW}
-            height={svgH}
-            style={{ display: 'block', overflow: 'visible' }}
-          >
-            {/* ── Highlight overlays (painted behind nodes) ─────────────── */}
-            {/* d1 highlight */}
-            {hasD1 && d1Nodes.map((d1) => (
-              <rect
-                key={`hl-${d1.id}`}
-                x={d1X - 3} y={D1_Y - 3}
-                width={D1_W + 6} height={D1_H + 6}
-                rx={10}
-                fill="rgba(255,123,114,0.08)"
-                stroke="var(--color-summary-d1)"
-                strokeWidth={2}
-                style={{
-                  opacity: highlightIds.includes(d1.id) ? 1 : 0,
-                  transition: 'opacity 0.45s ease',
-                  pointerEvents: 'none',
-                }}
-              />
-            ))}
-            {/* Summary highlights */}
-            {d0Nodes.map((s, i) => {
-              const colX = X_PAD + i * COL_W;
-              return (
-                <rect
-                  key={`hl-${s.id}`}
-                  x={colX - 3} y={d0Y - 3}
-                  width={NODE_W + 6} height={D0_H + 6}
-                  rx={9}
-                  fill="rgba(240,136,62,0.08)"
-                  stroke="var(--color-summary)"
-                  strokeWidth={2}
-                  style={{
-                    opacity: highlightIds.includes(s.id) ? 1 : 0,
-                    transition: 'opacity 0.45s ease',
-                    pointerEvents: 'none',
-                  }}
-                />
-              );
-            })}
-            {/* Message group highlights */}
-            {d0Nodes.map((s, i) => {
-              const colX = X_PAD + i * COL_W;
-              const msgX = colX + (NODE_W - MSG_W) / 2;
-              return (
-                <rect
-                  key={`hl-msgs-${s.id}`}
-                  x={msgX - 3} y={msgY - 3}
-                  width={MSG_W + 6} height={MSG_H + 6}
-                  rx={7}
-                  fill="rgba(56,139,253,0.08)"
-                  stroke="var(--color-user)"
-                  strokeWidth={2}
-                  style={{
-                    opacity: highlightIds.includes(`msgs_${s.id}`) ? 1 : 0,
-                    transition: 'opacity 0.45s ease',
-                    pointerEvents: 'none',
-                  }}
-                />
-              );
-            })}
-
-            {/* ── Single d1 node ─────────────────────────────────────────── */}
-            {hasD1 && d1Nodes.map((d1) => (
-              <g key={d1.id} ref={(el) => { d1GroupRefs.current[d1.id] = el; }} style={{ opacity: 0 }}>
-                <rect
-                  ref={(el) => { d1RectRefs.current[d1.id] = el; }}
-                  x={d1X} y={D1_Y}
-                  width={D1_W} height={D1_H}
-                  rx={7}
-                  fill="rgba(255,123,114,0.10)"
-                  stroke="var(--color-summary-d1)"
-                  strokeWidth={1.5}
-                />
-                <text x={d1X + 10} y={D1_Y + 16}
-                  fill="var(--color-summary-d1)"
-                  fontSize={9} fontWeight="bold" fontFamily="monospace"
-                >
-                  SUMMARY · DEPTH 1 · {d1.tokens} tok
-                </text>
-                <text x={d1X + 10} y={D1_Y + 30}
-                  fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
-                >
-                  {d1.id}
-                </text>
-                <text x={d1X + 10} y={D1_Y + 44}
-                  fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
-                >
-                  {d1.timeRange} · ↳ {d1.descendantCount} msgs
-                </text>
-              </g>
-            ))}
-
-            {/* ── Summary nodes + edges ──────────────────────────────────── */}
-            {d0Nodes.map((s, i) => {
-              const colX  = X_PAD + i * COL_W;
-              const nodeCX = colX + NODE_W / 2;
-              const msgX  = colX + (NODE_W - MSG_W) / 2;
-              const msgCX = msgX + MSG_W / 2;
-
-              // Edge: summary → message group (Bézier curves with generous control offsets)
-              const summaryToMsg = [
-                `M ${nodeCX} ${d0Y + D0_H}`,
-                `C ${nodeCX} ${d0Y + D0_H + 28}`,
-                `  ${msgCX}  ${msgY - 28}`,
-                `  ${msgCX}  ${msgY}`,
-              ].join(' ');
-
-              // Edge: d1 → this summary (drawn via strokeDashoffset animation)
-              const d1ToSummary = [
-                `M ${d1CX} ${D1_Y + D1_H}`,
-                `C ${d1CX} ${D1_Y + D1_H + 24}`,
-                `  ${nodeCX} ${d0Y - 24}`,
-                `  ${nodeCX} ${d0Y}`,
-              ].join(' ');
-
-              return (
-                <g key={s.id}>
-                  {/* d1 → summary edge (animated in, starts invisible) */}
-                  {hasD1 && (
-                    <path
-                      ref={(el) => { d1EdgeRefs.current[s.id] = el; }}
-                      d={d1ToSummary}
-                      stroke="var(--color-summary-d1)"
-                      strokeWidth={1.5}
-                      fill="none"
-                      opacity={0}
-                    />
+                      {/* D1 node group (animated in) */}
+                      <g
+                        ref={(el) => { d1GroupRefs.current[group.d1.id] = el; }}
+                        style={{ opacity: 0 }}
+                      >
+                        <rect
+                          ref={(el) => { d1RectRefs.current[group.d1.id] = el; }}
+                          x={d1X} y={d1RowY}
+                          width={d1W} height={D1_H}
+                          rx={7}
+                          fill="rgba(255,123,114,0.10)"
+                          stroke="var(--color-summary-d1)"
+                          strokeWidth={1.5}
+                        />
+                        <text x={d1X + 10} y={d1RowY + 16}
+                          fill="var(--color-summary-d1)"
+                          fontSize={9} fontWeight="bold" fontFamily="monospace"
+                        >
+                          SUMMARY · DEPTH 1 · {group.d1.tokens} tok
+                        </text>
+                        <text x={d1X + 10} y={d1RowY + 30}
+                          fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
+                        >
+                          {group.d1.id}
+                        </text>
+                        <text x={d1X + 10} y={d1RowY + 44}
+                          fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
+                        >
+                          {group.d1.timeRange} · ↳ {group.d1.descendantCount} msgs
+                        </text>
+                      </g>
+                    </>
                   )}
 
-                  {/* Summary node group */}
-                  <g
-                    ref={(el) => { d0GroupRefs.current[s.id] = el; }}
-                    style={{ opacity: 0 }}
-                  >
-                    <rect
-                      ref={(el) => { d0RectRefs.current[s.id] = el; }}
-                      x={colX} y={d0Y}
-                      width={NODE_W} height={D0_H}
-                      rx={6}
-                      fill="rgba(240,136,62,0.10)"
-                      stroke="var(--color-summary)"
-                      strokeWidth={1}
-                    />
-                    <text x={colX + 9} y={d0Y + 15}
-                      fill="var(--color-summary)"
-                      fontSize={9} fontWeight="bold" fontFamily="monospace"
-                    >
-                      SUMMARY · DEPTH 0 · {s.tokens} tok
-                    </text>
-                    <text x={colX + 9} y={d0Y + 29}
-                      fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
-                    >
-                      {s.id}
-                    </text>
-                    <text x={colX + 9} y={d0Y + 43}
-                      fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
-                    >
-                      {s.timeRange}
-                    </text>
-                    <text x={colX + 9} y={d0Y + 57}
-                      fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
-                    >
-                      ↳ {s.descendantCount} msgs
-                    </text>
+                  {/* ── D0 section: expanded or collapsed ────────────── */}
+                  {group.expanded ? (
+                    // Expanded: individual D0 nodes + message groups
+                    group.d0s.map((s, i) => {
+                      const colX   = groupX + i * COL_W;
+                      const nodeCX = colX + NODE_W / 2;
+                      const msgX   = colX + (NODE_W - MSG_W) / 2;
+                      const msgCX  = msgX + MSG_W / 2;
 
-                    {/* summary → message group edge */}
-                    <path
-                      d={summaryToMsg}
-                      stroke="var(--color-border)"
-                      strokeWidth={1.5}
-                      fill="none"
-                      strokeDasharray="4 3"
-                    />
+                      // Edge: D0 → message group
+                      const summaryToMsg = [
+                        `M ${nodeCX} ${d0RowY + D0_H}`,
+                        `C ${nodeCX} ${d0RowY + D0_H + 28}`,
+                        `  ${msgCX}  ${msgRowY - 28}`,
+                        `  ${msgCX}  ${msgRowY}`,
+                      ].join(' ');
 
-                    {/* Message group node */}
-                    <rect
-                      x={msgX} y={msgY}
-                      width={MSG_W} height={MSG_H}
-                      rx={6}
-                      fill="rgba(56,139,253,0.07)"
-                      stroke="var(--color-user)"
-                      strokeWidth={1}
-                      strokeDasharray="3 2"
-                    />
-                    <text x={msgX + 9} y={msgY + 16}
-                      fill="var(--color-user)"
-                      fontSize={9} fontWeight="bold" fontFamily="monospace"
-                    >
-                      {s.descendantCount} raw messages
-                    </text>
-                    <text x={msgX + 9} y={msgY + 30}
-                      fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
-                    >
-                      {s.timeRange}
-                    </text>
-                  </g>
+                      // Edge: D1 → D0 (animated stroke-dashoffset)
+                      const d1ToD0 = group.d1 ? [
+                        `M ${d1CX} ${d1RowY + D1_H}`,
+                        `C ${d1CX} ${d1RowY + D1_H + 24}`,
+                        `  ${nodeCX} ${d0RowY - 24}`,
+                        `  ${nodeCX} ${d0RowY}`,
+                      ].join(' ') : null;
+
+                      return (
+                        <g key={s.id}>
+                          {/* D1→D0 edge (starts invisible, animated in) */}
+                          {d1ToD0 && (
+                            <path
+                              ref={(el) => { d1EdgeRefs.current[s.id] = el; }}
+                              d={d1ToD0}
+                              stroke="var(--color-summary-d1)"
+                              strokeWidth={1.5}
+                              fill="none"
+                              opacity={0}
+                            />
+                          )}
+
+                          {/* D0 highlight overlay */}
+                          <rect
+                            x={colX - 3} y={d0RowY - 3}
+                            width={NODE_W + 6} height={D0_H + 6}
+                            rx={9}
+                            fill="rgba(240,136,62,0.08)"
+                            stroke="var(--color-summary)"
+                            strokeWidth={2}
+                            style={{
+                              opacity: highlightIds.includes(s.id) ? 1 : 0,
+                              transition: 'opacity 0.45s ease',
+                              pointerEvents: 'none',
+                            }}
+                          />
+
+                          {/* Message group highlight overlay */}
+                          <rect
+                            x={msgX - 3} y={msgRowY - 3}
+                            width={MSG_W + 6} height={MSG_H + 6}
+                            rx={7}
+                            fill="rgba(56,139,253,0.08)"
+                            stroke="var(--color-user)"
+                            strokeWidth={2}
+                            style={{
+                              opacity: highlightIds.includes(`msgs_${s.id}`) ? 1 : 0,
+                              transition: 'opacity 0.45s ease',
+                              pointerEvents: 'none',
+                            }}
+                          />
+
+                          {/* D0 node group (animated in) */}
+                          <g
+                            ref={(el) => { d0GroupRefs.current[s.id] = el; }}
+                            style={{ opacity: 0 }}
+                          >
+                            <rect
+                              ref={(el) => { d0RectRefs.current[s.id] = el; }}
+                              x={colX} y={d0RowY}
+                              width={NODE_W} height={D0_H}
+                              rx={6}
+                              fill="rgba(240,136,62,0.10)"
+                              stroke="var(--color-summary)"
+                              strokeWidth={1}
+                            />
+                            <text x={colX + 9} y={d0RowY + 15}
+                              fill="var(--color-summary)"
+                              fontSize={9} fontWeight="bold" fontFamily="monospace"
+                            >
+                              SUMMARY · DEPTH 0 · {s.tokens} tok
+                            </text>
+                            <text x={colX + 9} y={d0RowY + 29}
+                              fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
+                            >
+                              {s.id}
+                            </text>
+                            <text x={colX + 9} y={d0RowY + 43}
+                              fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
+                            >
+                              {s.timeRange}
+                            </text>
+                            <text x={colX + 9} y={d0RowY + 57}
+                              fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
+                            >
+                              ↳ {s.descendantCount} msgs
+                            </text>
+
+                            {/* D0 → message group edge */}
+                            <path
+                              d={summaryToMsg}
+                              stroke="var(--color-border)"
+                              strokeWidth={1.5}
+                              fill="none"
+                              strokeDasharray="4 3"
+                            />
+
+                            {/* Message group node */}
+                            <rect
+                              x={msgX} y={msgRowY}
+                              width={MSG_W} height={MSG_H}
+                              rx={6}
+                              fill="rgba(56,139,253,0.07)"
+                              stroke="var(--color-user)"
+                              strokeWidth={1}
+                              strokeDasharray="3 2"
+                            />
+                            <text x={msgX + 9} y={msgRowY + 16}
+                              fill="var(--color-user)"
+                              fontSize={9} fontWeight="bold" fontFamily="monospace"
+                            >
+                              {s.descendantCount} raw messages
+                            </text>
+                            <text x={msgX + 9} y={msgRowY + 30}
+                              fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
+                            >
+                              {s.timeRange}
+                            </text>
+                          </g>
+                        </g>
+                      );
+                    })
+                  ) : (
+                    // Collapsed: dashed group box + edge from D1
+                    (() => {
+                      const grpW  = D0_GRP_W;
+                      const grpX  = groupX + (groupPx - grpW) / 2;
+                      const grpCX = grpX + grpW / 2;
+                      const edgePath = [
+                        `M ${d1CX} ${d1RowY + D1_H}`,
+                        `C ${d1CX} ${d1RowY + D1_H + 28}`,
+                        `  ${grpCX} ${d0RowY - 28}`,
+                        `  ${grpCX} ${d0RowY}`,
+                      ].join(' ');
+                      return (
+                        <g>
+                          {/* D1→group edge */}
+                          <path
+                            d={edgePath}
+                            stroke="var(--color-border)"
+                            strokeWidth={1.5}
+                            fill="none"
+                            strokeDasharray="4 3"
+                          />
+                          {/* D0 group box */}
+                          <rect
+                            x={grpX} y={d0RowY}
+                            width={grpW} height={D0_GRP_H}
+                            rx={6}
+                            fill="rgba(240,136,62,0.07)"
+                            stroke="var(--color-summary)"
+                            strokeWidth={1}
+                            strokeDasharray="3 2"
+                          />
+                          <text x={grpX + 9} y={d0RowY + 16}
+                            fill="var(--color-summary)"
+                            fontSize={9} fontWeight="bold" fontFamily="monospace"
+                          >
+                            {group.d0s.length} summaries
+                          </text>
+                          <text x={grpX + 9} y={d0RowY + 30}
+                            fill="var(--color-muted)" fontSize={9} fontFamily="monospace"
+                          >
+                            {group.d1?.timeRange}
+                          </text>
+                        </g>
+                      );
+                    })()
+                  )}
                 </g>
               );
             })}
           </svg>
         </div>
       )}
+
+      {/* Prompt labels (shown below SVG when showPromptLabels is true) */}
+      {[2, 1, 0].map((depth) => {
+        const label = PROMPT_LABELS[depth];
+        const present = depthsPresent.has(depth);
+        return (
+          <div
+            key={depth}
+            style={{
+              opacity: showPromptLabels && present ? 1 : 0,
+              transition: 'opacity 0.45s ease',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '6px',
+              pointerEvents: 'none',
+            }}
+          >
+            <span style={{ color: label.color, fontFamily: 'monospace', fontSize: '9px', fontWeight: 'bold', whiteSpace: 'nowrap', paddingTop: '1px' }}>
+              D{depth}
+            </span>
+            <span style={{ color: label.color, fontFamily: 'monospace', fontSize: '9px', lineHeight: '1.4' }}>
+              {label.text}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }
