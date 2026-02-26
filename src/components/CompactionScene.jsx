@@ -4,10 +4,13 @@
  * the onStateChange callback.
  *
  * Structure (top to bottom):
- *   Section 0     Transition ("There's a better way")
- *   Sections 1–8  Compaction narration (80vh each)
- *   Scrub section 220vh; ScrollTrigger scrub drives summary 3 and 4
- *   Sections 9–18 Condensation, bounded context, tools intro, tool demos
+ *   Section 0      Transition ("There's a better way")
+ *   Sections 1–8   Compaction narration (80vh each)
+ *   Scrub section   220vh; ScrollTrigger scrub drives summary 3 and 4
+ *   Sections 9–10  Condensation threshold + pass (first D1)
+ *   D1 scrub section 260vh; ScrollTrigger scrub grows D1 nodes from 1 to 4
+ *   Sections 11–14 DAG growth, D2 condensation, depth-aware prompts
+ *   Sections 15–22 Bounded context, tools overview, individual tool demos
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
@@ -25,99 +28,116 @@ import {
 
 gsap.registerPlugin(ScrollTrigger);
 
+// ── Full DAG summaries (d2 + 4 d1s + 16 d0s) ──────────────────────────────
+// Used by itemsForStep for all steps after DAG is fully grown.
+const FULL_DAG_SUMMARIES = [
+  SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4,
+  SUMMARY_5, SUMMARY_6, SUMMARY_7, SUMMARY_8,
+  SUMMARY_9, SUMMARY_10, SUMMARY_11, SUMMARY_12,
+  SUMMARY_13, SUMMARY_14, SUMMARY_15, SUMMARY_16,
+  D1_SUMMARY, D1_SUMMARY_2, D1_SUMMARY_3, D1_SUMMARY_4,
+  D2_SUMMARY,
+];
+
 // ── Narration copy ──────────────────────────────────────────────────────────
+// Steps 0–10: compaction basics through first condensation
+// Steps 11–14: DAG growth (cycle continues, D1 condensations, D2, prompts)
+// Steps 15–16: bounded context + retrieval tools overview
+// Steps 17–22: individual tool demos
 const STEPS = [
-  {
+  /* 0 */ {
     title: 'There\'s a better way.',
     body: 'LCM starts the same way — a conversation accumulating messages — but instead of truncating, it compacts them into layered summaries where nothing is ever lost.',
   },
-  {
+  /* 1 */ {
     title: 'Messages Arrive',
     body: 'Each user message and assistant reply appends to the context. Tokens accumulate. Early on there\'s plenty of headroom.',
   },
-  {
+  /* 2 */ {
     title: 'The Budget Fills',
     body: 'As the conversation grows, the budget bar climbs. LCM monitors this continuously.',
   },
-  {
+  /* 3 */ {
     title: 'The Fresh Tail',
     body: 'LCM always protects the most recent raw messages — the "fresh tail." These are never compacted. Everything older is eligible for summarization. In this simplified example the fresh tail is 4 messages; in real-world use it would be much larger.',
   },
-  {
+  /* 4 */ {
     title: 'Incremental Compaction',
     body: 'When raw messages outside the fresh tail exceed 2,000 tokens, LCM automatically fires incremental compaction. This happens asynchronously — your conversation isn\'t interrupted. And because source messages are never lost in LCM, compaction is always safe.',
   },
-  {
+  /* 5 */ {
     title: 'Summary Compaction',
     body: 'The eligible chunk is sent to the model with a structured prompt. A summary replaces the source messages in the conversation, but the references to the source messages are preserved. We\'ll discuss how these source messages are accessed later when we discuss expansion.',
   },
-  {
+  /* 6 */ {
     title: 'The Conversation Continues',
     body: 'New messages arrive. The fresh tail advances. The summary is a compact stand-in — the agent can expand it on demand.',
   },
-  {
+  /* 7 */ {
     title: 'The Cycle Repeats',
     body: 'After more turns, a new cohort of messages accumulates outside the fresh tail. The threshold is crossed and another compaction pass fires automatically.',
   },
-  {
+  /* 8 */ {
     title: 'Second Compaction Pass',
     body: 'A second summary is created. The Summary DAG now has two summary nodes, each a dense slice of conversation history.',
   },
-  {
+  // ── (D0 scrub section sits between 8 and 9) ──
+  /* 9 */ {
     title: 'Condensation Threshold',
     body: 'When enough summaries accumulate at the same depth — 4 in this case — LCM fires a condensation pass. They are synthesized into a single depth-1 node.',
   },
-  {
+  /* 10 */ {
     title: 'Condensation Pass',
     body: 'The four summaries are sent to the model with a higher-level synthesis prompt. The result is a depth-1 summary: more abstract, more durable, covering the full arc.',
   },
-  {
-    title: 'A Bounded, Lossless Context',
-    body: 'The conversation has grown considerably, yet the context remains tight and compact. Nothing was discarded. Every message lives in the DAG — but how does the model actually access it?',
-  },
-  {
-    title: 'Retrieval Tools',
-    body: 'LCM ships with a set of tools that give the agent structured access to the summary DAG. The agent can inspect nodes, search across depths, and expand any summary back to its source messages — all without loading the full history into context.',
-  },
-  {
-    title: 'Tool: lcm_describe',
-    body: 'Before searching, the agent can inspect any node directly with lcm_describe. It returns the node\'s token count, time range, depth, and child IDs — a structural map of the DAG before any retrieval begins.',
-  },
-  {
-    title: 'Tool: lcm_grep',
-    body: 'lcm_grep performs full-text search across every node in the DAG — raw messages and summaries alike. Results come back ranked with node IDs, depth labels, and matching snippets. The agent pinpoints exactly where a topic lives.',
-  },
-  {
-    title: 'Tool: lcm_expand_query',
-    body: 'When a summary isn\'t enough — when the agent needs the original details, not just an abstraction — it calls lcm_expand_query. This is the heart of lossless recall: full-fidelity access to any summarized section, without pulling all those tokens back into the main context.',
-  },
-  {
-    title: 'Bounded Sub-Agent',
-    body: 'lcm_expand_query issues a delegation grant: a scoped authorization token with a conversation scope and token cap. It spawns a dedicated sub-agent carrying that grant. The sub-agent\'s context expands for this task. The main agent\'s context is unchanged.',
-  },
-  {
-    title: 'Walking the DAG',
-    body: 'The sub-agent walks the summary DAG downward — reading the depth-1 node, expanding into the relevant summary, then fetching the underlying source messages. Only what\'s needed is retrieved, bounded by the grant\'s token cap.',
-  },
-  {
-    title: 'Focused Answer',
-    body: 'Full source fidelity with bounded cost. The sub-agent synthesizes a precise answer from the original content and returns it to the main agent. The main context is unchanged — but it now has the exact information it needed from the very first messages of the conversation.',
-  },
-  {
+  // ── (D1 scrub section sits between 10 and 11) ──
+  /* 11 */ {
     title: 'The Cycle Continues',
     body: 'As more turns accumulate, LCM keeps running. Each new cohort outside the fresh tail triggers a leaf pass. Each group of four leaf summaries triggers a depth-1 condensation. The DAG grows deeper.',
   },
-  {
+  /* 12 */ {
     title: 'Depth-1 Condensations',
     body: 'Three more depth-1 condensations have fired — one for each new block of turns. Four depth-1 nodes now cover the full arc. LCM is about to do something it has never done in this conversation before.',
   },
-  {
+  /* 13 */ {
     title: 'Depth-2 Condensation',
     body: 'Four depth-1 nodes at the same depth — the condensation threshold is crossed again. LCM fires a depth-2 pass, synthesizing all four into a single node covering 64 turns. The DAG is now three levels deep.',
   },
-  {
+  /* 14 */ {
     title: 'Depth-Aware Prompts',
     body: 'Each depth runs a different prompt. Leaf summaries capture specifics: decisions, rationale, exact technical details. Depth-1 distills the arc: what evolved, outcomes, current state. Depth-2 produces a durable narrative — decisions still in effect and a milestone timeline — the kind of context that stays useful for weeks.',
+  },
+  /* 15 */ {
+    title: 'A Bounded, Lossless Context',
+    body: 'The conversation has grown considerably, yet the context remains tight and compact. Nothing was discarded. Every message lives in the DAG — but how does the model actually access it?',
+  },
+  /* 16 */ {
+    title: 'Retrieval Tools',
+    body: 'LCM ships with a set of tools that give the agent structured access to the summary DAG. The agent can inspect nodes, search across depths, and expand any summary back to its source messages — all without loading the full history into context.',
+  },
+  /* 17 */ {
+    title: 'Tool: lcm_describe',
+    body: 'Before searching, the agent can inspect any node directly with lcm_describe. It returns the node\'s token count, time range, depth, and child IDs — a structural map of the DAG before any retrieval begins.',
+  },
+  /* 18 */ {
+    title: 'Tool: lcm_grep',
+    body: 'lcm_grep performs full-text search across every node in the DAG — raw messages and summaries alike. Results come back ranked with node IDs, depth labels, and matching snippets. The agent pinpoints exactly where a topic lives.',
+  },
+  /* 19 */ {
+    title: 'Tool: lcm_expand_query',
+    body: 'When a summary isn\'t enough — when the agent needs the original details, not just an abstraction — it calls lcm_expand_query. This is the heart of lossless recall: full-fidelity access to any summarized section, without pulling all those tokens back into the main context.',
+  },
+  /* 20 */ {
+    title: 'Bounded Sub-Agent',
+    body: 'lcm_expand_query issues a delegation grant: a scoped authorization token with a conversation scope and token cap. It spawns a dedicated sub-agent carrying that grant. The sub-agent\'s context expands for this task. The main agent\'s context is unchanged.',
+  },
+  /* 21 */ {
+    title: 'Walking the DAG',
+    body: 'The sub-agent walks the summary DAG downward — reading the depth-1 node, expanding into the relevant summary, then fetching the underlying source messages. Only what\'s needed is retrieved, bounded by the grant\'s token cap.',
+  },
+  /* 22 */ {
+    title: 'Focused Answer',
+    body: 'Full source fidelity with bounded cost. The sub-agent synthesizes a precise answer from the original content and returns it to the main agent. The main context is unchanged — but it now has the exact information it needed from the very first messages of the conversation.',
   },
 ];
 
@@ -132,9 +152,14 @@ function sumTokens(items) {
   return items.reduce((acc, i) => acc + (i.data.tokens ?? 0), 0);
 }
 
-/** Target state for each narration step. */
+/**
+ * Target state for each narration step.
+ * Returns { items, summaries } where items drives the context panel and
+ * summaries drives the DAG visualization.
+ */
 function itemsForStep(s) {
   switch (s) {
+    // ── Compaction basics (unchanged) ──
     case 0:  return { items: [], summaries: [] };
     case 1:  return { items: [M[0],M[1],M[2],M[3]].map(msgItem), summaries: [] };
     case 2:  return { items: [M[0],M[1],M[2],M[3],M[4],M[5],M[6],M[7]].map(msgItem), summaries: [] };
@@ -171,25 +196,37 @@ function itemsForStep(s) {
       ],
       summaries: [SUMMARY_1, SUMMARY_2],
     };
+    // ── (D0 scrub sits here) ──
     case 9:  return {
       items: [sumItem(SUMMARY_1),sumItem(SUMMARY_2),sumItem(SUMMARY_3),sumItem(SUMMARY_4), ftItem],
       summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4],
     };
-    case 10: case 11: case 12: case 13: case 14:
-    case 15: case 16: case 17: case 18: return {
+    case 10: return {
       items: [sumItem(D1_SUMMARY), ftItem],
       summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4, D1_SUMMARY],
     };
-    // Section C steps: DAG grows; context stays hidden, DAG takes focus.
-    case 19: return {
+    // ── (D1 scrub sits here) ──
+    // ── DAG growth: 4 D1s visible, context stays at D1 level ──
+    case 11: case 12: return {
       items: [sumItem(D1_SUMMARY), ftItem],
-      summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4,
-                  D1_SUMMARY, D1_SUMMARY_2, D1_SUMMARY_3, D1_SUMMARY_4],
+      summaries: [
+        SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4,
+        SUMMARY_5, SUMMARY_6, SUMMARY_7, SUMMARY_8,
+        SUMMARY_9, SUMMARY_10, SUMMARY_11, SUMMARY_12,
+        SUMMARY_13, SUMMARY_14, SUMMARY_15, SUMMARY_16,
+        D1_SUMMARY, D1_SUMMARY_2, D1_SUMMARY_3, D1_SUMMARY_4,
+      ],
     };
-    case 20: case 21: case 22: return {
+    // ── D2 condensation + depth-aware prompts ──
+    case 13: case 14: return {
       items: [sumItem(D1_SUMMARY), ftItem],
-      summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4,
-                  D1_SUMMARY, D1_SUMMARY_2, D1_SUMMARY_3, D1_SUMMARY_4, D2_SUMMARY],
+      summaries: FULL_DAG_SUMMARIES,
+    };
+    // ── Bounded context + tools: full DAG in summaries, D2 in context ──
+    case 15: case 16: case 17: case 18: case 19:
+    case 20: case 21: case 22: return {
+      items: [sumItem(D2_SUMMARY), ftItem],
+      summaries: FULL_DAG_SUMMARIES,
     };
     default: return { items: [], summaries: [] };
   }
@@ -204,24 +241,30 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
   const [fastForward, setFastForward] = useState(false);
 
   const narrationRefs  = useRef([]);
-  const scrubRef       = useRef(null);
+  const scrubRef       = useRef(null);   // D0 scrub (between steps 8 and 9)
+  const scrubD1Ref     = useRef(null);   // D1 scrub (between steps 10 and 11)
   const prevStepRef    = useRef(-1);
   const staggerQueue   = useRef([]);
 
-  // Tool visualization state (steps 12–18: overview at 12, individual tools 13–18)
+  // Tool visualization state (steps 16–22: overview at 16, individual tools 17–22)
   const [toolView,       setToolView]       = useState(null);
   const [expandPhase,    setExpandPhase]    = useState(0);
 
-  // Section C DAG focus mode (steps 19–22): keeps context hidden, DAG prominent
+  // Section C DAG focus mode (steps 11–14): keeps context hidden, DAG prominent
   const [sectionCActive,  setSectionCActive]  = useState(false);
 
-  // DAG prompt labels state (steps 21–22)
+  // DAG prompt labels state (steps 13–14)
   const [dagPromptLabels, setDagPromptLabels] = useState(false);
 
 
-  // Scrub milestone flags
+  // D0 scrub milestone flags
   const sum3Added = useRef(false);
   const sum4Added = useRef(false);
+
+  // D1 scrub milestone flags
+  const d1_2Added = useRef(false);
+  const d1_3Added = useRef(false);
+  const d1_4Added = useRef(false);
 
   const usedTokens = sumTokens(items);
 
@@ -277,30 +320,30 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
     setFastForward(false);
     setCompacting(s === 4 || s === 7);
 
-    // Tool view driven by step number (steps 12–18)
-    if (s === 12) {
+    // Tool view driven by step number (steps 16–22)
+    if (s === 16) {
       setToolView('overview'); setExpandPhase(0);
-    } else if (s === 13) {
-      setToolView('describe'); setExpandPhase(0);
-    } else if (s === 14) {
-      setToolView('grep');     setExpandPhase(0);
-    } else if (s === 15) {
-      setToolView('expand');   setExpandPhase(1);
-    } else if (s === 16) {
-      setToolView('expand');   setExpandPhase(2);
     } else if (s === 17) {
-      setToolView('expand');   setExpandPhase(3);
+      setToolView('describe'); setExpandPhase(0);
     } else if (s === 18) {
+      setToolView('grep');     setExpandPhase(0);
+    } else if (s === 19) {
+      setToolView('expand');   setExpandPhase(1);
+    } else if (s === 20) {
+      setToolView('expand');   setExpandPhase(2);
+    } else if (s === 21) {
+      setToolView('expand');   setExpandPhase(3);
+    } else if (s === 22) {
       setToolView('expand');   setExpandPhase(3);
     } else {
       setToolView(null);       setExpandPhase(0);
     }
 
-    // Section C DAG focus mode (steps 19–22)
-    setSectionCActive(s >= 19 && s <= 22);
+    // Section C DAG focus mode (steps 11–14)
+    setSectionCActive(s >= 11 && s <= 14);
 
-    // DAG prompt labels (steps 21–22)
-    if (s >= 21 && s <= 22) {
+    // DAG prompt labels (steps 13–14: D2 condensation + depth-aware prompts)
+    if (s >= 13 && s <= 14) {
       setDagPromptLabels(true);
     } else {
       setDagPromptLabels(false);
@@ -377,7 +420,7 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
     return () => triggers.forEach((t) => t?.kill());
   }, [applyStep, onActivate]);
 
-  // ── Scrub section ScrollTrigger ───────────────────────────────────────────
+  // ── D0 scrub section ScrollTrigger (grows summaries 3 and 4) ──────────────
   useEffect(() => {
     const el = scrubRef.current;
     if (!el) return;
@@ -454,7 +497,96 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
     return () => trigger.kill();
   }, [onActivate]);
 
-  // ── Fast-forward card (sticky inside the scrub section) ────────────────────
+  // ── D1 scrub section ScrollTrigger (grows D1 nodes from 1 to 4) ──────────
+  useEffect(() => {
+    const el = scrubD1Ref.current;
+    if (!el) return;
+
+    // Base summaries when entering the D1 scrub (matches step 10 state)
+    const baseSummaries = [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4, D1_SUMMARY];
+
+    const trigger = ScrollTrigger.create({
+      trigger: el,
+      start:   'top 60%',
+      end:     'bottom 60%',
+      scrub:   0.6,
+
+      onEnter: () => {
+        onActivate?.();
+        d1_2Added.current = false;
+        d1_3Added.current = false;
+        d1_4Added.current = false;
+        setFastForward(true);
+        setSectionCActive(true);
+        setStep(-1);
+        setCompacting(false);
+        // Start with single D1 (post-condensation state)
+        setItems([sumItem(D1_SUMMARY), ftItem]);
+        setSummaries(baseSummaries);
+      },
+
+      onLeaveBack: () => {
+        onActivate?.();
+        d1_2Added.current = false;
+        d1_3Added.current = false;
+        d1_4Added.current = false;
+        setFastForward(false);
+        setSectionCActive(false);
+        const t = itemsForStep(10);
+        setItems(t.items);
+        setSummaries(t.summaries);
+      },
+
+      onLeave: () => { setFastForward(false); },
+
+      onUpdate: (self) => {
+        // Milestone at 30%: D1_SUMMARY_2 appears
+        if (self.progress >= 0.3 && !d1_2Added.current) {
+          d1_2Added.current = true;
+          setSummaries((prev) =>
+            prev.some((s) => s.id === D1_SUMMARY_2.id) ? prev : [...prev, D1_SUMMARY_2]
+          );
+        }
+        if (self.progress < 0.3 && d1_2Added.current) {
+          d1_2Added.current = false;
+          d1_3Added.current = false;
+          d1_4Added.current = false;
+          setSummaries(baseSummaries);
+        }
+
+        // Milestone at 55%: D1_SUMMARY_3 appears
+        if (self.progress >= 0.55 && !d1_3Added.current) {
+          d1_3Added.current = true;
+          setSummaries((prev) =>
+            prev.some((s) => s.id === D1_SUMMARY_3.id) ? prev : [...prev, D1_SUMMARY_3]
+          );
+        }
+        if (self.progress < 0.55 && d1_3Added.current) {
+          d1_3Added.current = false;
+          d1_4Added.current = false;
+          setSummaries((prev) =>
+            prev.filter((s) => s.id !== D1_SUMMARY_3.id && s.id !== D1_SUMMARY_4.id)
+          );
+        }
+
+        // Milestone at 80%: D1_SUMMARY_4 appears
+        if (self.progress >= 0.8 && !d1_4Added.current) {
+          d1_4Added.current = true;
+          setSummaries((prev) =>
+            prev.some((s) => s.id === D1_SUMMARY_4.id) ? prev : [...prev, D1_SUMMARY_4]
+          );
+        }
+        if (self.progress < 0.8 && d1_4Added.current) {
+          d1_4Added.current = false;
+          setSummaries((prev) => prev.filter((s) => s.id !== D1_SUMMARY_4.id));
+        }
+      },
+    });
+
+    return () => trigger.kill();
+  }, [onActivate]);
+
+  // ── D0 fast-forward card (sticky inside the D0 scrub section) ─────────────
   function FastForwardCard() {
     const summaryIds = summaries.map((s) => s.id);
     return (
@@ -488,6 +620,52 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
             return (
               <div key={s.id} style={{
                 color: present ? 'var(--color-summary)' : 'var(--color-border)',
+                transition: 'color 0.4s',
+              }} className="text-xs flex items-center gap-2">
+                <span>{present ? '●' : '○'}</span>
+                <span>{s.id} · {s.timeRange}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ── D1 fast-forward card (sticky inside the D1 scrub section) ─────────────
+  function FastForwardD1Card() {
+    const summaryIds = summaries.map((s) => s.id);
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+            <div key={i} style={{
+              background: 'var(--color-border)',
+              width: '6px', height: '6px',
+            }} className="rounded-full" />
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <span style={{
+            color: 'var(--color-summary-d1)',
+            borderColor: 'var(--color-summary-d1)',
+          }} className="rounded border px-2 py-0.5 text-[10px] font-bold tracking-widest">
+            ⏩ FAST FORWARD
+          </span>
+        </div>
+        <h2 style={{ color: 'var(--color-text)' }} className="text-2xl font-bold leading-tight m-0">
+          The DAG Grows Deeper
+        </h2>
+        <p style={{ color: 'var(--color-muted)', lineHeight: '1.7' }} className="text-sm m-0">
+          Each new block of four summaries triggers another depth-1 condensation.
+          Watch the DAG add new depth-1 nodes as you scroll.
+        </p>
+        <div className="flex flex-col gap-1.5">
+          {[D1_SUMMARY_2, D1_SUMMARY_3, D1_SUMMARY_4].map((s) => {
+            const present = summaryIds.includes(s.id);
+            return (
+              <div key={s.id} style={{
+                color: present ? 'var(--color-summary-d1)' : 'var(--color-border)',
                 transition: 'color 0.4s',
               }} className="text-xs flex items-center gap-2">
                 <span>{present ? '●' : '○'}</span>
@@ -535,7 +713,7 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
         );
       })}
 
-      {/* Fast-forward scrub section */}
+      {/* D0 fast-forward scrub section (grows summaries 3 and 4) */}
       <div
         ref={scrubRef}
         style={{ height: '220vh', position: 'relative', padding: '0 3.5rem' }}
@@ -545,9 +723,34 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
         </div>
       </div>
 
-      {/* Sections 9–18 */}
-      {STEPS.slice(9).map((s, i) => {
+      {/* Sections 9–10 (condensation threshold + pass) */}
+      {STEPS.slice(9, 11).map((s, i) => {
         const globalIdx = i + 9;
+        return (
+          <div
+            key={globalIdx}
+            ref={(el) => { narrationRefs.current[globalIdx] = el; }}
+            className="flex items-center"
+            style={{ minHeight: '80vh', padding: '0 3.5rem' }}
+          >
+            <Narration title={s.title} body={s.body} step={globalIdx} totalSteps={TOTAL_STEPS} />
+          </div>
+        );
+      })}
+
+      {/* D1 fast-forward scrub section (grows D1 nodes from 1 to 4) */}
+      <div
+        ref={scrubD1Ref}
+        style={{ height: '260vh', position: 'relative', padding: '0 3.5rem' }}
+      >
+        <div style={{ position: 'sticky', top: '38vh' }}>
+          <FastForwardD1Card />
+        </div>
+      </div>
+
+      {/* Sections 11–22 (DAG growth, bounded context, tools) */}
+      {STEPS.slice(11).map((s, i) => {
+        const globalIdx = i + 11;
         return (
           <div
             key={globalIdx}
