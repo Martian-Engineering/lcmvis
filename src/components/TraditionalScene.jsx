@@ -144,8 +144,10 @@ export default function TraditionalScene({ onStateChange, onActivate, panelRef }
           ref={(el) => { narrationRefs.current[i] = el; }}
           className={`flex ${i === 0 ? 'items-start' : 'items-center'}`}
           style={{
-            minHeight: i === 0 ? '100vh' : '80vh',
-            padding: i === 0 ? '2.25rem 3.5rem 0' : '0 3.5rem',
+            minHeight: i === 0 ? 'var(--scene-first-height)' : 'var(--scene-step-height)',
+            padding: i === 0
+              ? 'var(--scene-first-top-padding) var(--scene-side-padding) 0'
+              : `0 var(--scene-side-padding)`,
           }}
         >
           <div className="flex flex-col gap-4">
@@ -157,7 +159,7 @@ export default function TraditionalScene({ onStateChange, onActivate, panelRef }
             </span>
             <h2
               style={{ color: 'var(--color-text)' }}
-              className="text-3xl font-bold leading-tight m-0"
+              className="m-0 text-2xl font-bold leading-tight md:text-3xl"
             >
               {s.title}
             </h2>
@@ -170,7 +172,7 @@ export default function TraditionalScene({ onStateChange, onActivate, panelRef }
           </div>
         </div>
       ))}
-      <div style={{ height: '20vh' }} />
+      <div style={{ height: 'var(--scene-trad-end-spacer)' }} />
     </>
   );
 }

@@ -180,7 +180,7 @@ export default function ToolPanel({ view, expandPhase }) {
     return (
       <div
         style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-        className="rounded-xl p-3 flex flex-col gap-3 h-full overflow-hidden"
+        className="flex h-full flex-col gap-3 overflow-hidden rounded-xl p-2.5 md:p-3"
       >
         {/* Header */}
         <div className="flex items-center gap-2 shrink-0">
@@ -233,7 +233,7 @@ export default function ToolPanel({ view, expandPhase }) {
   return (
     <div
       style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-      className="rounded-xl p-3 flex flex-col gap-2 h-full overflow-hidden"
+      className="flex h-full flex-col gap-2 overflow-hidden rounded-xl p-2.5 md:p-3"
     >
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-2 shrink-0">
@@ -256,7 +256,7 @@ export default function ToolPanel({ view, expandPhase }) {
         <span style={{ color: 'var(--color-muted)' }} className="text-[9px] font-mono">{'> '}</span>
         <span
           style={{ color: 'var(--color-text)', whiteSpace: 'pre-wrap' }}
-          className="text-[9px] font-mono"
+          className="break-all text-[9px] font-mono"
         >
           {command}
         </span>

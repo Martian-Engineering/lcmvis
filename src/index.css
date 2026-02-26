@@ -18,6 +18,22 @@
   --color-budget: #388bfd;
   --color-budget-warn: #f0883e;
   --color-budget-over: #ff7b72;
+
+  --panel-sticky-height: 100vh;
+  --scene-side-padding: 3.5rem;
+  --scene-step-height: 80vh;
+  --scene-first-height: 100vh;
+  --scene-first-top-padding: 2.25rem;
+  --scene-scrub-height: 220vh;
+  --scene-scrub-sticky-top: 38vh;
+  --scene-trad-end-spacer: 20vh;
+  --scene-end-spacer: 40vh;
+  --shared-panel-padding: 1.25rem 2.5rem 1.25rem 1rem;
+  --shared-context-max-height: 70vh;
+  --shared-dag-height: 40%;
+  --shared-dag-height-with-tool: 48%;
+  --shared-dag-height-focus: 80%;
+  --shared-tool-height: 44%;
 }
 
 * {
@@ -39,3 +55,23 @@ body {
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--color-bg); }
 ::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+
+@media (max-width: 767px) {
+  :root {
+    --panel-sticky-height: 50vh;
+    --scene-side-padding: 1rem;
+    --scene-step-height: 60vh;
+    --scene-first-height: 80vh;
+    --scene-first-top-padding: 1.25rem;
+    --scene-scrub-height: 170vh;
+    --scene-scrub-sticky-top: 22vh;
+    --scene-trad-end-spacer: 12vh;
+    --scene-end-spacer: 22vh;
+    --shared-panel-padding: 0.75rem;
+    --shared-context-max-height: 48vh;
+    --shared-dag-height: 52%;
+    --shared-dag-height-with-tool: 56%;
+    --shared-dag-height-focus: 84%;
+    --shared-tool-height: 40%;
+  }
+}

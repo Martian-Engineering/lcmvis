@@ -223,7 +223,7 @@ const SharedPanel = forwardRef(function SharedPanel({
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div style={{
-      padding: '1.25rem 2.5rem 1.25rem 1rem',
+      padding: 'var(--shared-panel-padding)',
       display: 'flex', flexDirection: 'column', gap: '10px',
       height: '100%',
     }}>
@@ -264,7 +264,7 @@ const SharedPanel = forwardRef(function SharedPanel({
       <div style={{
         flexShrink: 0,
         flex: ctxCollapsed ? '0 0 auto' : '1 1 auto',
-        maxHeight: ctxCollapsed ? 0 : '70vh',
+        maxHeight: ctxCollapsed ? 0 : 'var(--shared-context-max-height)',
         minHeight: 0,
         overflow: 'hidden',
         opacity: ctxCollapsed ? 0 : 1,
@@ -272,7 +272,7 @@ const SharedPanel = forwardRef(function SharedPanel({
       }}>
         <div
           style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-          className="rounded-xl p-4 flex flex-col gap-3 h-full"
+          className="flex h-full flex-col gap-3 rounded-xl p-3 md:p-4"
         >
           {/* Header — badge cross-fades between modes */}
           <div className="flex items-center justify-between shrink-0">
@@ -396,7 +396,11 @@ const SharedPanel = forwardRef(function SharedPanel({
       <div style={{
         flexShrink: 0,
         height: isLcm && lcmSummaries.length > 0
-          ? (lcmToolView ? '48%' : lcmSectionCActive ? '80%' : '40%')
+          ? (lcmToolView
+              ? 'var(--shared-dag-height-with-tool)'
+              : lcmSectionCActive
+                ? 'var(--shared-dag-height-focus)'
+                : 'var(--shared-dag-height)')
           : 0,
         overflow: 'hidden',
         transition: 'height 0.55s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -412,7 +416,7 @@ const SharedPanel = forwardRef(function SharedPanel({
       {/* ── Tool panel (LCM only — slides in for tool demo steps) ─────────── */}
       <div style={{
         flexShrink: 0,
-        height: isLcm && lcmToolView ? '44%' : 0,
+        height: isLcm && lcmToolView ? 'var(--shared-tool-height)' : 0,
         overflow: 'hidden',
         transition: 'height 0.55s cubic-bezier(0.16, 1, 0.3, 1)',
       }}>

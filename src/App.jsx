@@ -15,24 +15,23 @@ import { AgentationOverlay } from './components/AgentationOverlay';
 function Hero() {
   return (
     <div
-      className="flex flex-col items-center justify-center text-center"
-      style={{ minHeight: '100vh', padding: '4rem 2rem' }}
+      className="flex min-h-[72vh] flex-col items-center justify-center px-4 py-12 text-center sm:px-6 md:min-h-screen md:px-8 md:py-16"
     >
       <p
         style={{ color: 'var(--color-summary)' }}
-        className="text-xs font-bold uppercase tracking-[0.2em] mb-4"
+        className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] md:mb-4 md:text-xs"
       >
         Lossless Context Management
       </p>
       <h1
         style={{ color: 'var(--color-text)' }}
-        className="text-5xl font-bold leading-tight m-0 mb-6 max-w-2xl"
+        className="m-0 mb-4 max-w-2xl text-3xl font-bold leading-tight sm:text-4xl md:mb-6 md:text-5xl"
       >
         Don't Lose Your Context
       </h1>
       <p
         style={{ color: 'var(--color-muted)', lineHeight: '1.7' }}
-        className="text-base max-w-xl m-0 mb-10"
+        className="m-0 mb-8 max-w-xl text-sm md:mb-10 md:text-base"
       >
         Traditional agents use compaction systems that replace your conversation with lossy summaries when context fills up.
         LCM replaces that lossy truncation with hierarchical summarization — every
@@ -80,10 +79,27 @@ export default function App() {
       <Hero />
 
       {/* Unified flex layout — single right panel spans both scenes */}
-      <div className="relative flex" style={{ minHeight: '100vh' }}>
+      <div className="relative flex min-h-screen flex-col md:flex-row">
+        {/* Right column on desktop, sticky header on mobile */}
+        <div
+          className="order-1 w-full bg-[var(--color-bg)] md:order-2 md:w-[55%]"
+          style={{
+            position: 'sticky',
+            top: 0,
+            height: 'var(--panel-sticky-height)',
+            zIndex: 10,
+          }}
+        >
+          <SharedPanel
+            ref={panelRef}
+            mode={mode}
+            tradState={tradState}
+            lcmState={lcmState}
+          />
+        </div>
 
         {/* Left column: both scenes' narration stacked vertically */}
-        <div className="flex flex-col" style={{ width: '45%' }}>
+        <div className="order-2 flex w-full flex-col md:order-1 md:w-[45%]">
           <TraditionalScene
             onStateChange={handleTradState}
             onActivate={activateTrad}
@@ -93,21 +109,6 @@ export default function App() {
             onStateChange={handleLcmState}
             onActivate={activateLcm}
             panelRef={panelRef}
-          />
-        </div>
-
-        {/* Right column: persistent sticky panel */}
-        <div style={{
-          width: '55%',
-          position: 'sticky',
-          top: 0,
-          height: '100vh',
-        }}>
-          <SharedPanel
-            ref={panelRef}
-            mode={mode}
-            tradState={tradState}
-            lcmState={lcmState}
           />
         </div>
       </div>

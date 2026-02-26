@@ -515,7 +515,7 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
       <div
         ref={(el) => { narrationRefs.current[0] = el; }}
         className="flex items-center"
-        style={{ minHeight: '100vh', padding: '0 3.5rem' }}
+        style={{ minHeight: 'var(--scene-first-height)', padding: `0 var(--scene-side-padding)` }}
       >
         <div className="flex flex-col gap-4">
           <span
@@ -536,7 +536,7 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
             key={idx}
             ref={(el) => { narrationRefs.current[idx] = el; }}
             className="flex items-center"
-            style={{ minHeight: '80vh', padding: '0 3.5rem' }}
+            style={{ minHeight: 'var(--scene-step-height)', padding: `0 var(--scene-side-padding)` }}
           >
             {idx === 5 ? (
               <div className="flex flex-col gap-4">
@@ -586,9 +586,9 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
       {/* D0 fast-forward scrub section (grows summaries 3 and 4) */}
       <div
         ref={scrubRef}
-        style={{ height: '220vh', position: 'relative', padding: '0 3.5rem' }}
+        style={{ height: 'var(--scene-scrub-height)', position: 'relative', padding: `0 var(--scene-side-padding)` }}
       >
-        <div style={{ position: 'sticky', top: '38vh' }}>
+        <div style={{ position: 'sticky', top: 'var(--scene-scrub-sticky-top)' }}>
           <FastForwardCard />
         </div>
       </div>
@@ -601,7 +601,7 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
             key={globalIdx}
             ref={(el) => { narrationRefs.current[globalIdx] = el; }}
             className="flex items-center"
-            style={{ minHeight: '80vh', padding: '0 3.5rem' }}
+            style={{ minHeight: 'var(--scene-step-height)', padding: `0 var(--scene-side-padding)` }}
           >
             {globalIdx === 10 ? (
               <div className="flex flex-col gap-4">
@@ -657,7 +657,7 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
             key={globalIdx}
             ref={(el) => { narrationRefs.current[globalIdx] = el; }}
             className="flex items-center"
-            style={{ minHeight: '80vh', padding: '0 3.5rem' }}
+            style={{ minHeight: 'var(--scene-step-height)', padding: `0 var(--scene-side-padding)` }}
           >
             <div className="flex flex-col gap-4">
               <Narration title={s.title} body={s.body} step={globalIdx} totalSteps={TOTAL_STEPS} />
@@ -713,7 +713,7 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
       <div
         ref={(el) => { narrationRefs.current[20] = el; }}
         className="flex items-center"
-        style={{ minHeight: '100vh', padding: '0 3.5rem' }}
+        style={{ minHeight: 'var(--scene-first-height)', padding: `0 var(--scene-side-padding)` }}
       >
         <div className="flex flex-col gap-6" style={{ maxWidth: 420 }}>
           {/* Badge */}
@@ -785,7 +785,7 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
         </div>
       </div>
 
-      <div style={{ height: '40vh' }} />
+      <div style={{ height: 'var(--scene-end-spacer)' }} />
     </>
   );
 }

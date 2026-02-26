@@ -295,14 +295,14 @@ export default function DagPanel({ summaries, highlightIds = [] }) {
   return (
     <div
       style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-      className="rounded-xl p-4 flex flex-col gap-2 h-full"
+      className="flex h-full flex-col gap-2 rounded-xl p-3 md:p-4"
     >
       {/* Header */}
       <div className="flex items-center justify-between shrink-0">
-        <h3 style={{ color: 'var(--color-text)' }} className="text-xs font-bold uppercase tracking-widest m-0">
+        <h3 style={{ color: 'var(--color-text)' }} className="m-0 text-[10px] font-bold uppercase tracking-widest md:text-xs">
           Summary DAG
         </h3>
-        <span style={{ color: 'var(--color-muted)' }} className="text-[10px]">
+        <span style={{ color: 'var(--color-muted)' }} className="text-[9px] md:text-[10px]">
           {hasD2 ? `${d2Nodes.length} d2 · ` : ''}
           {hasD1 ? `${d1Nodes.length} d1 · ` : ''}
           {d0Nodes.length} d0
@@ -323,6 +323,7 @@ export default function DagPanel({ summaries, highlightIds = [] }) {
             viewBox={`0 0 ${svgW} ${svgH}`}
             width={svgW}
             height={svgH}
+            className="max-w-none"
             style={{ display: 'block', overflow: 'visible' }}
           >
             {/* ── D2 node ──────────────────────────────────────────────── */}
