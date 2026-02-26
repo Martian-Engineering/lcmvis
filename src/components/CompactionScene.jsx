@@ -599,8 +599,8 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
                       { depth: 0, color: 'var(--color-summary)',    range: 'minutes' },
                       { depth: 1, color: 'var(--color-summary-d1)', range: 'hours'   },
                       { depth: 2, color: 'var(--color-summary-d2)', range: 'days'    },
-                      { depth: 3, color: 'var(--color-muted)',      range: 'weeks'   },
-                      { depth: 4, color: 'var(--color-muted)',      range: 'months'  },
+                      { depth: 3, color: 'var(--color-summary-d3)', range: 'weeks'   },
+                      { depth: 4, color: 'var(--color-summary-d4)', range: 'months'  },
                     ].map(({ depth, color, range }) => (
                       <div key={depth} style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
                         <span style={{ color, fontFamily: 'monospace', fontSize: '11px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
