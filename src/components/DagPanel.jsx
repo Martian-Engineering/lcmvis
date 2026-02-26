@@ -43,6 +43,9 @@ const MSG_H   = 42;
 const D1_H    = 64;
 const D1_Y    = 8;
 
+// D1 node max width when expanded (centered over owned D0 columns)
+const D1_MAX_W = 220;
+
 // D2 node (centered wide node spanning D1 columns)
 const D2_H = D1_H;   // 64
 const D2_W = 220;    // fixed width for D2 banner
@@ -206,7 +209,7 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
       gsap.fromTo(
         el,
         { opacity: 0, scale: 0.75, transformOrigin: '50% 50%' },
-        { opacity: 1, scale: 1, duration: 0.5, delay: idx * 0.1, ease: 'back.out(1.4)' }
+        { opacity: 1, scale: 1, duration: 0.5, delay: idx * 0.15, ease: 'power2.out' }
       );
     });
   }, [d0Nodes, expandedD1Id]);
@@ -247,14 +250,14 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
           stagger: 0.04,
           ease: 'power2.in',
         })
-        // Phase 2: D1 node scales in
+        // Phase 2: D1 node scales in (after pulse settles)
         .fromTo(
           d1GroupRefs.current[d1Nodes[0].id],
           { opacity: 0, scale: 0.6, transformOrigin: '50% 0%' },
-          { opacity: 1, scale: 1, duration: 0.55, ease: 'back.out(1.6)' },
-          '-=0.1'
+          { opacity: 1, scale: 1, duration: 0.55, ease: 'power2.out' },
+          '+=0.05'
         )
-        // Phase 3: draw in each d1→d0 edge
+        // Phase 3: draw in each d1→d0 edge (after D1 is visible)
         .add(() => {
           d0Nodes.forEach((node, i) => {
             const path = d1EdgeRefs.current[node.id];
@@ -263,12 +266,12 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
             gsap.set(path, { strokeDasharray: len, strokeDashoffset: len, opacity: 1 });
             gsap.to(path, {
               strokeDashoffset: 0,
-              duration: 0.35,
-              delay: i * 0.07,
+              duration: 0.4,
+              delay: i * 0.08,
               ease: 'power2.out',
             });
           });
-        }, '-=0.15');
+        }, '+=0.1');
     } else {
       // Additional D1 nodes: scale each in individually, no pulse or edges
       newD1s.forEach((d1, idx) => {
@@ -277,7 +280,7 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
         gsap.fromTo(
           el,
           { opacity: 0, scale: 0.75, transformOrigin: '50% 50%' },
-          { opacity: 1, scale: 1, duration: 0.5, delay: idx * 0.1, ease: 'back.out(1.4)' }
+          { opacity: 1, scale: 1, duration: 0.5, delay: idx * 0.15, ease: 'power2.out' }
         );
       });
     }
@@ -314,14 +317,14 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
         stagger: 0.04,
         ease: 'power2.in',
       })
-      // Phase 2: D2 group scales in
+      // Phase 2: D2 group scales in (after pulse settles)
       .fromTo(
         d2GroupRef.current,
         { opacity: 0, scale: 0.6, transformOrigin: '50% 0%' },
-        { opacity: 1, scale: 1, duration: 0.55, ease: 'back.out(1.6)' },
-        '-=0.1'
+        { opacity: 1, scale: 1, duration: 0.55, ease: 'power2.out' },
+        '+=0.05'
       )
-      // Phase 3: draw in each d2→d1 edge
+      // Phase 3: draw in each d2→d1 edge (after D2 is visible)
       .add(() => {
         d1Nodes.forEach((d1, i) => {
           const path = d2EdgeRefs.current[d1.id];
@@ -330,12 +333,12 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
           gsap.set(path, { strokeDasharray: len, strokeDashoffset: len, opacity: 1 });
           gsap.to(path, {
             strokeDashoffset: 0,
-            duration: 0.35,
-            delay: i * 0.07,
+            duration: 0.4,
+            delay: i * 0.08,
             ease: 'power2.out',
           });
         });
-      }, '-=0.15');
+      }, '+=0.1');
   }, [d2Nodes, d1Nodes]);
 
   // ── Unified column layout ────────────────────────────────────────────────
@@ -473,8 +476,8 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
               const groupX  = X_PAD + group.colOffset * COL_W;
               const groupPx = group.numCols * COL_W;
 
-              // D1 node geometry: spans full group width with padding
-              const d1W  = groupPx - (group.numCols > 1 ? 2 * X_PAD : COL_W - NODE_W);
+              // D1 node geometry: fixed cap when expanded, NODE_W when collapsed
+              const d1W  = group.numCols > 1 ? D1_MAX_W : NODE_W;
               const d1X  = groupX + (groupPx - d1W) / 2;
               const d1CX = groupX + groupPx / 2;
 
