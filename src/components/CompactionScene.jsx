@@ -532,7 +532,47 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
             className="flex items-center"
             style={{ minHeight: '80vh', padding: '0 3.5rem' }}
           >
-            <Narration title={s.title} body={s.body} step={idx} totalSteps={TOTAL_STEPS} />
+            {idx === 5 ? (
+              <div className="flex flex-col gap-4">
+                <Narration title={s.title} body={s.body} step={idx} totalSteps={TOTAL_STEPS} />
+                {/* D0 compaction prompt callout */}
+                <div style={{
+                  background: 'rgba(0,0,0,0.25)',
+                  border: '1px solid var(--color-border)',
+                  borderLeft: '2px solid var(--color-summary)',
+                  borderRadius: 6,
+                  padding: '10px 12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                }}>
+                  <span style={{ color: 'var(--color-summary)', fontFamily: 'monospace', fontSize: '9px', fontWeight: 'bold', letterSpacing: '0.1em' }}>
+                    COMPACTION PROMPT · DEPTH 0
+                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    {[
+                      'Summarize this conversation segment for future turns.',
+                      'Preserve decisions, rationale, constraints, active tasks.',
+                      'Remove repetition and conversational filler.',
+                    ].map((line, i) => (
+                      <span key={i} style={{ color: 'var(--color-muted)', fontFamily: 'monospace', fontSize: '10px', lineHeight: 1.5 }}>
+                        {line}
+                      </span>
+                    ))}
+                  </div>
+                  <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <span style={{ color: 'var(--color-muted)', fontFamily: 'monospace', fontSize: '10px', lineHeight: 1.5 }}>
+                      End with:
+                    </span>
+                    <span style={{ color: 'var(--color-summary)', fontFamily: 'monospace', fontSize: '10px', lineHeight: 1.5, paddingLeft: 8 }}>
+                      "Expand for details about: &lt;what was dropped&gt;"
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <Narration title={s.title} body={s.body} step={idx} totalSteps={TOTAL_STEPS} />
+            )}
           </div>
         );
       })}
