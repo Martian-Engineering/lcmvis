@@ -113,19 +113,19 @@ const STEPS = [
   },
   /* 16 */ {
     title: 'Tool: lcm_expand_query',
-    body: 'When a summary isn\'t enough — when the agent needs the original details, not just an abstraction — it calls lcm_expand_query. This is the heart of lossless recall: full-fidelity access to any summarized section, without pulling all those tokens back into the main context.',
+    body: 'When a summary isn\'t enough, the agent calls lcm_expand_query. It issues a delegation grant — a scoped authorization with a conversation scope and token budget — then spawns a sub-agent to navigate the DAG strategically.',
   },
   /* 17 */ {
     title: 'Bounded Sub-Agent',
-    body: 'lcm_expand_query issues a delegation grant: a scoped authorization token with a conversation scope and token cap. It spawns a dedicated sub-agent carrying that grant. The sub-agent\'s context expands for this task. The main agent\'s context is unchanged.',
+    body: 'The sub-agent receives lcm_describe and lcm_expand as tools plus a 4,000-token budget. Rather than following a prescribed path, it plans its own traversal — inspecting the DAG structure and token costs before committing to any expansion.',
   },
   /* 18 */ {
     title: 'Walking the DAG',
-    body: 'The sub-agent walks the summary DAG downward — reading the depth-1 node, expanding into the relevant summary, then fetching the underlying source messages. Only what\'s needed is retrieved, bounded by the grant\'s token cap.',
+    body: 'The sub-agent calls lcm_describe on the D2 node to read the manifest, identifies sum_d1_01 as the best match, then expands only the relevant leaf summary. It explores a 20k-token subtree but consumes under 800 tokens by being strategic.',
   },
   /* 19 */ {
     title: 'Focused Answer',
-    body: 'Full source fidelity with bounded cost. The sub-agent synthesizes a precise answer from the original content and returns it to the main agent. The main context is unchanged — but it now has the exact information it needed from the very first messages of the conversation.',
+    body: 'Full source fidelity with bounded cost. The sub-agent returns its answer to the main agent. The main context is unchanged — but it now has exact details from the very first turns of a 64-turn conversation.',
   },
 ];
 
@@ -241,9 +241,9 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
     if (toolView === 'describe') return ['sum_d2_01'];
     if (toolView === 'grep')     return ['sum_d1_01', 'sum_01', 'msgs_sum_01'];
     if (toolView === 'expand') {
-      if (expandPhase >= 3) return ['sum_d1_01', 'sum_01', 'msgs_sum_01'];
-      if (expandPhase >= 2) return ['sum_d1_01', 'sum_01'];
-      if (expandPhase >= 1) return ['sum_d1_01'];
+      if (expandPhase >= 3) return ['sum_d2_01', 'sum_d1_01', 'sum_01'];
+      if (expandPhase >= 2) return ['sum_d2_01', 'sum_d1_01', 'sum_01'];
+      if (expandPhase >= 1) return ['sum_d2_01', 'sum_d1_01'];
     }
     return [];
   }, [toolView, expandPhase]);

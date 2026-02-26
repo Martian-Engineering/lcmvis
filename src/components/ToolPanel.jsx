@@ -89,12 +89,17 @@ const MAIN_AGENT_LINES = [
   { minPhase: 1, accent: false, text: '   task: expand DAG around "refresh token"' },
 ];
 
-// Sub-agent traversal log: shown inside the framed sub-agent box
+// Sub-agent traversal log: strategic DAG navigation
 const SUB_AGENT_LINES = [
-  { minPhase: 1, accent: true,  text: '⟶  Reading sum_d1_01  (580 tok)' },
-  { minPhase: 2, accent: true,  text: '⟶  Expanding sum_01 · Turns 1–4' },
-  { minPhase: 2, accent: false, text: '    Fetching 8 source messages…' },
-  { minPhase: 3, accent: true,  text: '✓  Synthesis complete' },
+  { minPhase: 1, accent: true,  text: '⟶  lcm_describe sum_d2_01' },
+  { minPhase: 1, accent: false, text: '   descTok: 20,480 · 4 children' },
+  { minPhase: 1, accent: false, text: '   manifest: sum_d1_01 ~5.2k · …' },
+  { minPhase: 2, accent: true,  text: '⟶  lcm_describe sum_d1_01  (best match)' },
+  { minPhase: 2, accent: false, text: '   manifest: sum_01 ~1.3k · sum_02 ~1.3k · …' },
+  { minPhase: 2, accent: true,  text: '⟶  lcm_expand sum_01  (1,280 tok)' },
+  { minPhase: 2, accent: false, text: '   4 source messages retrieved' },
+  { minPhase: 3, accent: true,  text: '✓  Answer synthesized' },
+  { minPhase: 3, accent: false, text: '   751 tok used of 4,000 budget' },
 ];
 
 const EXPAND_RESPONSE = [
@@ -208,7 +213,7 @@ export default function ToolPanel({ view, expandPhase }) {
     ? 'lcm_describe node_id="sum_d2_01"'
     : isGrep
     ? 'lcm_grep query="OAuth2" scope="both"'
-    : 'lcm_expand_query(query="refresh token", prompt="How does the refresh token flow work?")';
+    : 'lcm_expand_query(query="refresh token", prompt="How does the refresh token flow work?", tokenCap=4000)';
 
   return (
     <div
@@ -436,8 +441,39 @@ export default function ToolPanel({ view, expandPhase }) {
                     read-only · bounded scope
                   </span>
                 </div>
+                {/* Token budget gauge */}
+                <div className="px-2.5 pt-2">
+                  <div className="flex justify-between items-center mb-1">
+                    <span style={{ color: 'var(--color-muted)' }} className="text-[8px] font-mono">
+                      TOKEN BUDGET
+                    </span>
+                    <span style={{ color: 'var(--color-muted)' }} className="text-[8px] font-mono tabular-nums">
+                      {expandPhase >= 3 ? '751' : expandPhase >= 2 ? '2,160' : '580'} / 4,000 tok
+                    </span>
+                  </div>
+                  <div style={{
+                    width: '100%',
+                    height: 4,
+                    background: 'rgba(255,255,255,0.08)',
+                    borderRadius: 2,
+                  }}>
+                    <div style={{
+                      height: '100%',
+                      borderRadius: 2,
+                      background: expandPhase >= 3
+                        ? 'var(--color-summary)'
+                        : 'var(--color-summary-d1)',
+                      width: expandPhase >= 3
+                        ? `${(751 / 4000) * 100}%`
+                        : expandPhase >= 2
+                        ? `${(2160 / 4000) * 100}%`
+                        : `${(580 / 4000) * 100}%`,
+                      transition: 'width 0.6s ease, background 0.6s ease',
+                    }} />
+                  </div>
+                </div>
                 {/* Traversal log */}
-                <div className="flex flex-col gap-1 p-2.5">
+                <div className="flex flex-col gap-1 p-2.5 pt-1.5">
                   {expandPhase < 1 ? (
                     <span style={{ color: 'var(--color-muted)' }} className="text-[9px] font-mono">
                       Awaiting sub-agent…
