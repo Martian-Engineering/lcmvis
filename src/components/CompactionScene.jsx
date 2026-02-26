@@ -9,8 +9,8 @@
  *   Scrub section   220vh; ScrollTrigger scrub drives summary 3 and 4
  *   Sections 9–10  Condensation threshold + pass (first D1)
  *   D1 scrub section 260vh; ScrollTrigger scrub grows D1 nodes from 1 to 4
- *   Sections 11–14 DAG growth, D2 condensation, depth-aware prompts
- *   Sections 15–22 Bounded context, tools overview, individual tool demos
+ *   Sections 11–13 DAG growth, D2 condensation, depth-aware prompts
+ *   Sections 14–21 Bounded context, tools overview, individual tool demos
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
@@ -41,9 +41,9 @@ const FULL_DAG_SUMMARIES = [
 
 // ── Narration copy ──────────────────────────────────────────────────────────
 // Steps 0–10: compaction basics through first condensation
-// Steps 11–14: DAG growth (cycle continues, D1 condensations, D2, prompts)
-// Steps 15–16: bounded context + retrieval tools overview
-// Steps 17–22: individual tool demos
+// Steps 11–13: DAG growth (D1 condensations, D2, depth-aware prompts)
+// Steps 14–15: bounded context + retrieval tools overview
+// Steps 16–21: individual tool demos
 const STEPS = [
   /* 0 */ {
     title: 'There\'s a better way.',
@@ -92,50 +92,46 @@ const STEPS = [
   },
   // ── (D1 scrub section sits between 10 and 11) ──
   /* 11 */ {
-    title: 'The Cycle Continues',
-    body: 'As more turns accumulate, LCM keeps running. Each new cohort outside the fresh tail triggers a leaf pass. Each group of four leaf summaries triggers a depth-1 condensation. The DAG grows deeper.',
-  },
-  /* 12 */ {
     title: 'Depth-1 Condensations',
     body: 'Three more depth-1 condensations have fired — one for each new block of turns. Four depth-1 nodes now cover the full arc. LCM is about to do something it has never done in this conversation before.',
   },
-  /* 13 */ {
+  /* 12 */ {
     title: 'Depth-2 Condensation',
     body: 'Four depth-1 nodes at the same depth — the condensation threshold is crossed again. LCM fires a depth-2 pass, synthesizing all four into a single node covering 64 turns. The DAG is now three levels deep.',
   },
-  /* 14 */ {
+  /* 13 */ {
     title: 'Depth-Aware Prompts',
     body: 'Each depth runs a different prompt. Leaf summaries capture specifics: decisions, rationale, exact technical details. Depth-1 distills the arc: what evolved, outcomes, current state. Depth-2 produces a durable narrative — decisions still in effect and a milestone timeline — the kind of context that stays useful for weeks.',
   },
-  /* 15 */ {
+  /* 14 */ {
     title: 'A Bounded, Lossless Context',
     body: 'The conversation has grown considerably, yet the context remains tight and compact. Nothing was discarded. Every message lives in the DAG — but how does the model actually access it?',
   },
-  /* 16 */ {
+  /* 15 */ {
     title: 'Retrieval Tools',
     body: 'LCM ships with a set of tools that give the agent structured access to the summary DAG. The agent can inspect nodes, search across depths, and expand any summary back to its source messages — all without loading the full history into context.',
   },
-  /* 17 */ {
+  /* 16 */ {
     title: 'Tool: lcm_describe',
     body: 'Before searching, the agent can inspect any node directly with lcm_describe. It returns the node\'s token count, time range, depth, and child IDs — a structural map of the DAG before any retrieval begins.',
   },
-  /* 18 */ {
+  /* 17 */ {
     title: 'Tool: lcm_grep',
     body: 'lcm_grep performs full-text search across every node in the DAG — raw messages and summaries alike. Results come back ranked with node IDs, depth labels, and matching snippets. The agent pinpoints exactly where a topic lives.',
   },
-  /* 19 */ {
+  /* 18 */ {
     title: 'Tool: lcm_expand_query',
     body: 'When a summary isn\'t enough — when the agent needs the original details, not just an abstraction — it calls lcm_expand_query. This is the heart of lossless recall: full-fidelity access to any summarized section, without pulling all those tokens back into the main context.',
   },
-  /* 20 */ {
+  /* 19 */ {
     title: 'Bounded Sub-Agent',
     body: 'lcm_expand_query issues a delegation grant: a scoped authorization token with a conversation scope and token cap. It spawns a dedicated sub-agent carrying that grant. The sub-agent\'s context expands for this task. The main agent\'s context is unchanged.',
   },
-  /* 21 */ {
+  /* 20 */ {
     title: 'Walking the DAG',
     body: 'The sub-agent walks the summary DAG downward — reading the depth-1 node, expanding into the relevant summary, then fetching the underlying source messages. Only what\'s needed is retrieved, bounded by the grant\'s token cap.',
   },
-  /* 22 */ {
+  /* 21 */ {
     title: 'Focused Answer',
     body: 'Full source fidelity with bounded cost. The sub-agent synthesizes a precise answer from the original content and returns it to the main agent. The main context is unchanged — but it now has the exact information it needed from the very first messages of the conversation.',
   },
@@ -206,8 +202,8 @@ function itemsForStep(s) {
       summaries: [SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4, D1_SUMMARY],
     };
     // ── (D1 scrub sits here) ──
-    // ── DAG growth: 4 D1s visible, context stays at D1 level ──
-    case 11: case 12: return {
+    // ── D1 condensations: 4 D1s visible, no D2 yet ──
+    case 11: return {
       items: [sumItem(D1_SUMMARY), ftItem],
       summaries: [
         SUMMARY_1, SUMMARY_2, SUMMARY_3, SUMMARY_4,
@@ -218,13 +214,13 @@ function itemsForStep(s) {
       ],
     };
     // ── D2 condensation + depth-aware prompts ──
-    case 13: case 14: return {
+    case 12: case 13: return {
       items: [sumItem(D1_SUMMARY), ftItem],
       summaries: FULL_DAG_SUMMARIES,
     };
     // ── Bounded context + tools: full DAG in summaries, D2 in context ──
-    case 15: case 16: case 17: case 18: case 19:
-    case 20: case 21: case 22: return {
+    case 14: case 15: case 16: case 17: case 18:
+    case 19: case 20: case 21: return {
       items: [sumItem(D2_SUMMARY), ftItem],
       summaries: FULL_DAG_SUMMARIES,
     };
@@ -246,14 +242,14 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
   const prevStepRef    = useRef(-1);
   const staggerQueue   = useRef([]);
 
-  // Tool visualization state (steps 16–22: overview at 16, individual tools 17–22)
+  // Tool visualization state (steps 15–21: overview at 15, individual tools 16–21)
   const [toolView,       setToolView]       = useState(null);
   const [expandPhase,    setExpandPhase]    = useState(0);
 
-  // Section C DAG focus mode (steps 11–14): keeps context hidden, DAG prominent
+  // Section C DAG focus mode (steps 11–13): keeps context hidden, DAG prominent
   const [sectionCActive,  setSectionCActive]  = useState(false);
 
-  // DAG prompt labels state (steps 13–14)
+  // DAG prompt labels state (steps 12–13)
   const [dagPromptLabels, setDagPromptLabels] = useState(false);
 
 
@@ -320,30 +316,30 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
     setFastForward(false);
     setCompacting(s === 4 || s === 7);
 
-    // Tool view driven by step number (steps 16–22)
-    if (s === 16) {
+    // Tool view driven by step number (steps 15–21)
+    if (s === 15) {
       setToolView('overview'); setExpandPhase(0);
-    } else if (s === 17) {
+    } else if (s === 16) {
       setToolView('describe'); setExpandPhase(0);
-    } else if (s === 18) {
+    } else if (s === 17) {
       setToolView('grep');     setExpandPhase(0);
-    } else if (s === 19) {
+    } else if (s === 18) {
       setToolView('expand');   setExpandPhase(1);
-    } else if (s === 20) {
+    } else if (s === 19) {
       setToolView('expand');   setExpandPhase(2);
-    } else if (s === 21) {
+    } else if (s === 20) {
       setToolView('expand');   setExpandPhase(3);
-    } else if (s === 22) {
+    } else if (s === 21) {
       setToolView('expand');   setExpandPhase(3);
     } else {
       setToolView(null);       setExpandPhase(0);
     }
 
-    // Section C DAG focus mode (steps 11–14)
-    setSectionCActive(s >= 11 && s <= 14);
+    // Section C DAG focus mode (steps 11–13)
+    setSectionCActive(s >= 11 && s <= 13);
 
-    // DAG prompt labels (steps 13–14: D2 condensation + depth-aware prompts)
-    if (s >= 13 && s <= 14) {
+    // DAG prompt labels (steps 12–13: D2 condensation + depth-aware prompts)
+    if (s >= 12 && s <= 13) {
       setDagPromptLabels(true);
     } else {
       setDagPromptLabels(false);
@@ -654,11 +650,12 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
           </span>
         </div>
         <h2 style={{ color: 'var(--color-text)' }} className="text-2xl font-bold leading-tight m-0">
-          The DAG Grows Deeper
+          The Cycle Continues
         </h2>
         <p style={{ color: 'var(--color-muted)', lineHeight: '1.7' }} className="text-sm m-0">
-          Each new block of four summaries triggers another depth-1 condensation.
-          Watch the DAG add new depth-1 nodes as you scroll.
+          As more turns accumulate, LCM keeps running. Each new cohort outside
+          the fresh tail triggers a leaf pass. Each group of four leaf summaries
+          triggers a depth-1 condensation. Watch the DAG grow as you scroll.
         </p>
         <div className="flex flex-col gap-1.5">
           {[D1_SUMMARY_2, D1_SUMMARY_3, D1_SUMMARY_4].map((s) => {
