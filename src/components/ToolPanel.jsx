@@ -80,6 +80,14 @@ const GREP_RESULTS = [
     timeRange: 'Turns 1–16',
     snippet: 'Project arc: OAuth2 + RBAC auth built from scratch, audit logging and rate limiting added, CI/CD pipeline configured…',
   },
+  {
+    id: 'sum_d2_01',
+    label: 'SUMMARY · DEPTH 2',
+    color: 'var(--color-summary-d2)',
+    borderFaint: 'rgba(255,220,215,0.15)',
+    timeRange: 'Turns 1–64',
+    snippet: 'Full project arc (64 turns): auth system (OAuth2 + RBAC), containerized and deployed to Kubernetes, observability and performance tuning…',
+  },
 ];
 
 // ── Expand simulation data ──────────────────────────────────────────────────────
@@ -336,7 +344,7 @@ export default function ToolPanel({ view, expandPhase }) {
               style={{ color: 'var(--color-muted)' }}
               className="text-[9px] font-mono"
             >
-              ✓ 4 matches found (2 messages · 2 summaries)
+              ✓ 5 matches found (2 messages · 1 d0 · 1 d1 · 1 d2)
             </div>
             {GREP_RESULTS.map((r, i) => (
               <div

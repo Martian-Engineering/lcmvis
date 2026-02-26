@@ -109,7 +109,7 @@ const STEPS = [
   },
   /* 15 */ {
     title: 'Tool: lcm_grep',
-    body: 'lcm_grep performs full-text search across every node in the DAG — raw messages and summaries alike. Results come back ranked with node IDs, depth labels, and matching snippets. The agent pinpoints exactly where a topic lives.',
+    body: 'lcm_grep searches every node in the DAG — raw messages and summaries alike, across all depths. Results come back with depth labels that tell the agent where in the hierarchy a topic lives — whether it\'s still in raw messages, compressed into a leaf summary, or distilled all the way up to the D2 narrative.',
   },
   /* 16 */ {
     title: 'Tool: lcm_expand_query',
@@ -239,7 +239,7 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
   // DAG highlight IDs driven by tool view and expand phase
   const dagHighlightIds = useMemo(() => {
     if (toolView === 'describe') return ['sum_d2_01'];
-    if (toolView === 'grep')     return ['sum_d1_01', 'sum_01', 'msgs_sum_01'];
+    if (toolView === 'grep')     return ['sum_d2_01', 'sum_d1_01', 'sum_01', 'msgs_sum_01'];
     if (toolView === 'expand') {
       if (expandPhase >= 3) return ['sum_d2_01', 'sum_d1_01', 'sum_01'];
       if (expandPhase >= 2) return ['sum_d2_01', 'sum_d1_01', 'sum_01'];
