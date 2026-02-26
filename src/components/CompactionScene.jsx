@@ -127,6 +127,10 @@ const STEPS = [
     title: 'Focused Answer',
     body: 'Full source fidelity with bounded cost. The sub-agent returns its answer to the main agent. The main context is unchanged — but it now has exact details from the very first turns of a 64-turn conversation.',
   },
+  /* 20 */ {
+    title: 'Lossless Context Management',
+    body: 'Hierarchical summarization. Full-fidelity recall. Bounded context, unbounded memory. Read the paper, try the OpenClaw plugin, or use Volt — a coding agent with LCM built in.',
+  },
 ];
 
 const TOTAL_STEPS = STEPS.length;
@@ -200,7 +204,7 @@ function itemsForStep(s) {
     };
     // ── Bounded context + tools: full DAG in summaries, D2 in context ──
     case 12: case 13: case 14: case 15: case 16:
-    case 17: case 18: case 19: return {
+    case 17: case 18: case 19: case 20: return {
       items: [sumItem(D2_SUMMARY), ftItem],
       summaries: FULL_DAG_SUMMARIES,
     };
@@ -301,6 +305,8 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
       setToolView('expand');   setExpandPhase(3);
     } else if (s === 19) {
       setToolView('expand');   setExpandPhase(3);
+    } else if (s === 20) {
+      setToolView(null);       setExpandPhase(0);
     } else {
       setToolView(null);       setExpandPhase(0);
     }
@@ -644,7 +650,7 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
       })}
 
       {/* Sections 11–19 (depth-aware prompts, bounded context, tools) */}
-      {STEPS.slice(11).map((s, i) => {
+      {STEPS.slice(11, 20).map((s, i) => {
         const globalIdx = i + 11;
         return (
           <div
@@ -702,6 +708,82 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
           </div>
         );
       })}
+
+      {/* Section 20 — Conclusion with resource links */}
+      <div
+        ref={(el) => { narrationRefs.current[20] = el; }}
+        className="flex items-center"
+        style={{ minHeight: '100vh', padding: '0 3.5rem' }}
+      >
+        <div className="flex flex-col gap-6" style={{ maxWidth: 420 }}>
+          {/* Badge */}
+          <span
+            style={{ color: 'var(--color-summary)', borderColor: 'var(--color-summary)' }}
+            className="self-start rounded border px-2 py-0.5 text-[10px] font-bold tracking-widest"
+          >
+            CONCLUSION
+          </span>
+
+          <Narration title={STEPS[20].title} body={STEPS[20].body} step={20} totalSteps={TOTAL_STEPS} />
+
+          {/* Resource link cards */}
+          <div className="flex flex-col gap-3">
+            {[
+              {
+                label: 'PAPER',
+                title: 'Lossless Context Management',
+                url: 'https://papers.voltropy.com/LCM',
+                color: 'var(--color-summary-d2)',
+              },
+              {
+                label: 'OPENCLAW PLUGIN',
+                title: 'lossless-claw',
+                url: 'https://github.com/martian-engineering/lossless-claw',
+                color: 'var(--color-summary-d1)',
+              },
+              {
+                label: 'CODING AGENT',
+                title: 'volt',
+                url: 'https://github.com/martian-engineering/volt',
+                color: 'var(--color-summary)',
+              },
+            ].map((link) => (
+              <a
+                key={link.url}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  background: 'rgba(0,0,0,0.25)',
+                  border: `1px solid color-mix(in srgb, ${link.color} 30%, transparent)`,
+                  borderLeft: `2px solid ${link.color}`,
+                  textDecoration: 'none',
+                }}
+                className="rounded-md px-4 py-3 flex flex-col gap-1 transition-all duration-200 hover:brightness-125"
+              >
+                <span
+                  style={{ color: link.color }}
+                  className="text-[9px] font-mono font-bold tracking-widest"
+                >
+                  {link.label}
+                </span>
+                <span
+                  style={{ color: 'var(--color-text)' }}
+                  className="text-sm font-semibold"
+                >
+                  {link.title}
+                </span>
+                <span
+                  style={{ color: 'var(--color-muted)' }}
+                  className="text-[11px] font-mono"
+                >
+                  {link.url}
+                </span>
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
 
       <div style={{ height: '40vh' }} />
     </>

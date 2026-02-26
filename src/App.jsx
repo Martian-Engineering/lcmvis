@@ -34,7 +34,7 @@ function Hero() {
         style={{ color: 'var(--color-muted)', lineHeight: '1.7' }}
         className="text-base max-w-xl m-0 mb-10"
       >
-        Traditional agents silently drop your oldest messages when the context fills up.
+        Traditional agents use compaction systems that replace your conversation with lossy summaries when context fills up.
         LCM replaces that lossy truncation with hierarchical summarization — every
         message preserved, every detail recoverable on demand.
       </p>
