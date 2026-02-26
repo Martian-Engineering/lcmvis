@@ -629,7 +629,7 @@ export default function DagPanel({ summaries, highlightIds = [], showPromptLabel
                             fill="var(--color-summary)"
                             fontSize={9} fontWeight="bold" fontFamily="monospace"
                           >
-                            {group.d0s.length} summaries
+                            SUMMARY x{group.d0s.length} · DEPTH 0
                           </text>
                           <text x={grpX + 9} y={d0RowY + 30}
                             fill="var(--color-muted)" fontSize={9} fontFamily="monospace"

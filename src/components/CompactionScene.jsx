@@ -536,11 +536,13 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
       onLeave: () => { setFastForward(false); },
 
       onUpdate: (self) => {
-        // Milestone at 30%: D1_SUMMARY_2 appears
+        // Milestone at 30%: cohort 2 — D0s sum_05–08 + D1_SUMMARY_2
         if (self.progress >= 0.3 && !d1_2Added.current) {
           d1_2Added.current = true;
           setSummaries((prev) =>
-            prev.some((s) => s.id === D1_SUMMARY_2.id) ? prev : [...prev, D1_SUMMARY_2]
+            prev.some((s) => s.id === D1_SUMMARY_2.id)
+              ? prev
+              : [...prev, SUMMARY_5, SUMMARY_6, SUMMARY_7, SUMMARY_8, D1_SUMMARY_2]
           );
         }
         if (self.progress < 0.3 && d1_2Added.current) {
@@ -550,31 +552,40 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
           setSummaries(baseSummaries);
         }
 
-        // Milestone at 55%: D1_SUMMARY_3 appears
+        // Milestone at 55%: cohort 3 — D0s sum_09–12 + D1_SUMMARY_3
         if (self.progress >= 0.55 && !d1_3Added.current) {
           d1_3Added.current = true;
           setSummaries((prev) =>
-            prev.some((s) => s.id === D1_SUMMARY_3.id) ? prev : [...prev, D1_SUMMARY_3]
+            prev.some((s) => s.id === D1_SUMMARY_3.id)
+              ? prev
+              : [...prev, SUMMARY_9, SUMMARY_10, SUMMARY_11, SUMMARY_12, D1_SUMMARY_3]
           );
         }
         if (self.progress < 0.55 && d1_3Added.current) {
           d1_3Added.current = false;
           d1_4Added.current = false;
-          setSummaries((prev) =>
-            prev.filter((s) => s.id !== D1_SUMMARY_3.id && s.id !== D1_SUMMARY_4.id)
-          );
+          setSummaries((prev) => prev.filter((s) =>
+            ![SUMMARY_9, SUMMARY_10, SUMMARY_11, SUMMARY_12,
+              SUMMARY_13, SUMMARY_14, SUMMARY_15, SUMMARY_16,
+              D1_SUMMARY_3, D1_SUMMARY_4].some((r) => r.id === s.id)
+          ));
         }
 
-        // Milestone at 80%: D1_SUMMARY_4 appears
+        // Milestone at 80%: cohort 4 — D0s sum_13–16 + D1_SUMMARY_4
         if (self.progress >= 0.8 && !d1_4Added.current) {
           d1_4Added.current = true;
           setSummaries((prev) =>
-            prev.some((s) => s.id === D1_SUMMARY_4.id) ? prev : [...prev, D1_SUMMARY_4]
+            prev.some((s) => s.id === D1_SUMMARY_4.id)
+              ? prev
+              : [...prev, SUMMARY_13, SUMMARY_14, SUMMARY_15, SUMMARY_16, D1_SUMMARY_4]
           );
         }
         if (self.progress < 0.8 && d1_4Added.current) {
           d1_4Added.current = false;
-          setSummaries((prev) => prev.filter((s) => s.id !== D1_SUMMARY_4.id));
+          setSummaries((prev) => prev.filter((s) =>
+            ![SUMMARY_13, SUMMARY_14, SUMMARY_15, SUMMARY_16,
+              D1_SUMMARY_4].some((r) => r.id === s.id)
+          ));
         }
       },
     });
