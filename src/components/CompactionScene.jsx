@@ -318,20 +318,22 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
     if (s === 5 && prev < 5) {
       setCompacting(false);
       animateCollapse(SUMMARY_1.sourceIds, () => {
+        // Set scroll intent before swapping items so SharedPanel's
+        // auto-scroll effect applies top-scroll on this update.
+        panelRef.current?.scrollToTop();
         const t = itemsForStep(5);
         setItems(t.items); setSummaries(t.summaries);
-        // Scroll context window to top so the new summary is visible
-        // (especially important on mobile where only a few items fit)
-        requestAnimationFrame(() => panelRef.current?.scrollToTop());
       });
       return;
     }
     if (s === 8 && prev < 8) {
       setCompacting(false);
       animateCollapse(SUMMARY_2.sourceIds, () => {
+        // Set scroll intent before swapping items so SharedPanel's
+        // auto-scroll effect applies top-scroll on this update.
+        panelRef.current?.scrollToTop();
         const t = itemsForStep(8);
         setItems(t.items); setSummaries(t.summaries);
-        requestAnimationFrame(() => panelRef.current?.scrollToTop());
       });
       return;
     }
