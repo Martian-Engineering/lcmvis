@@ -320,6 +320,9 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
       animateCollapse(SUMMARY_1.sourceIds, () => {
         const t = itemsForStep(5);
         setItems(t.items); setSummaries(t.summaries);
+        // Scroll context window to top so the new summary is visible
+        // (especially important on mobile where only a few items fit)
+        requestAnimationFrame(() => panelRef.current?.scrollToTop());
       });
       return;
     }
@@ -328,6 +331,7 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
       animateCollapse(SUMMARY_2.sourceIds, () => {
         const t = itemsForStep(8);
         setItems(t.items); setSummaries(t.summaries);
+        requestAnimationFrame(() => panelRef.current?.scrollToTop());
       });
       return;
     }

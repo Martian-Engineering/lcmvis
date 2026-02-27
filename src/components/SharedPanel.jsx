@@ -152,6 +152,11 @@ const SharedPanel = forwardRef(function SharedPanel({
 
       collapseAnimRef.current = tl;
     },
+    /** Scroll the context window items list to the top. */
+    scrollToTop() {
+      const el = scrollRef.current;
+      if (el) el.scrollTo({ top: 0, behavior: 'smooth' });
+    },
   }));
 
   // ── Derived state ───────────────────────────────────────────────────────────
