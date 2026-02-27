@@ -416,7 +416,7 @@ const SharedPanel = forwardRef(function SharedPanel({
               ? (isMobile ? 0 : 'var(--shared-dag-height-with-tool)')
               : lcmSectionCActive
                 ? 'var(--shared-dag-height-focus)'
-                : 'var(--shared-dag-height)')
+                : (isMobile ? 0 : 'var(--shared-dag-height)'))
           : 0,
         overflow: 'hidden',
         transition: 'height 0.55s cubic-bezier(0.16, 1, 0.3, 1)',
