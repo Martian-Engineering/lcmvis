@@ -378,11 +378,13 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
 
   // ── ScrollTriggers (narration sections) ───────────────────────────────────
   useEffect(() => {
+    const isMobile = window.matchMedia('(max-width: 767px)').matches;
+    const start = isMobile ? 'top 58%' : 'top 55%';
     const triggers = narrationRefs.current.map((el, i) => {
       if (!el) return null;
       return ScrollTrigger.create({
         trigger:    el,
-        start:      'top 55%',
+        start,
         end:        'bottom 45%',
         onEnter:     () => { onActivate?.(); applyStep(i); },
         onEnterBack: () => { onActivate?.(); applyStep(i); },
@@ -520,8 +522,8 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
       {/* Section 0 — transition from Traditional to LCM */}
       <div
         ref={(el) => { narrationRefs.current[0] = el; }}
-        className="flex items-center"
-        style={{ minHeight: 'var(--scene-first-height)', padding: `0 var(--scene-side-padding)` }}
+        className="flex items-start md:items-center"
+        style={{ minHeight: 'var(--scene-first-height)', padding: 'var(--scene-block-pad-y) var(--scene-side-padding)' }}
       >
         <div className="flex flex-col gap-4">
           <span
@@ -541,8 +543,8 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
           <div
             key={idx}
             ref={(el) => { narrationRefs.current[idx] = el; }}
-            className="flex items-center"
-            style={{ minHeight: 'var(--scene-step-height)', padding: `0 var(--scene-side-padding)` }}
+            className="flex items-start md:items-center"
+            style={{ minHeight: 'var(--scene-step-height)', padding: 'var(--scene-block-pad-y) var(--scene-side-padding)' }}
           >
             {idx === 5 ? (
               <div className="flex flex-col gap-4">
@@ -553,11 +555,9 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
                   border: '1px solid var(--color-border)',
                   borderLeft: '2px solid var(--color-summary)',
                   borderRadius: 6,
-                  padding: '10px 12px',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 6,
-                }}>
+                }} className="rounded-md px-2.5 py-2 md:px-3 md:py-2.5 flex flex-col gap-1.5 md:gap-[6px]">
                   <span style={{ color: 'var(--color-summary)', fontFamily: 'monospace', fontSize: '9px', fontWeight: 'bold', letterSpacing: '0.1em' }}>
                     COMPACTION PROMPT · DEPTH 0
                   </span>
@@ -606,8 +606,8 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
           <div
             key={globalIdx}
             ref={(el) => { narrationRefs.current[globalIdx] = el; }}
-            className="flex items-center"
-            style={{ minHeight: 'var(--scene-step-height)', padding: `0 var(--scene-side-padding)` }}
+            className="flex items-start md:items-center"
+            style={{ minHeight: 'var(--scene-step-height)', padding: 'var(--scene-block-pad-y) var(--scene-side-padding)' }}
           >
             {globalIdx === 10 ? (
               <div className="flex flex-col gap-4">
@@ -618,11 +618,9 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
                   border: '1px solid var(--color-border)',
                   borderLeft: '2px solid var(--color-summary-d1)',
                   borderRadius: 6,
-                  padding: '10px 12px',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 6,
-                }}>
+                }} className="rounded-md px-2.5 py-2 md:px-3 md:py-2.5 flex flex-col gap-1.5 md:gap-[6px]">
                   <span style={{ color: 'var(--color-summary-d1)', fontFamily: 'monospace', fontSize: '9px', fontWeight: 'bold', letterSpacing: '0.1em' }}>
                     CONDENSATION PROMPT · DEPTH 1
                   </span>
@@ -662,13 +660,13 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
           <div
             key={globalIdx}
             ref={(el) => { narrationRefs.current[globalIdx] = el; }}
-            className="flex items-center"
-            style={{ minHeight: 'var(--scene-step-height)', padding: `0 var(--scene-side-padding)` }}
+            className="flex items-start md:items-center"
+            style={{ minHeight: 'var(--scene-step-height)', padding: 'var(--scene-block-pad-y) var(--scene-side-padding)' }}
           >
             <div className="flex flex-col gap-4">
               <Narration title={s.title} body={s.body} step={globalIdx} totalSteps={TOTAL_STEPS} />
               {globalIdx === 11 && (
-                <div className="flex flex-col gap-2" style={{ marginTop: '4px' }}>
+                <div className="mt-0.5 md:mt-1 flex flex-col gap-1.5 md:gap-2">
                   {[
                     { depth: 2, color: 'var(--color-summary-d2)', text: 'Durable narrative: decisions in effect, completed work, milestone timeline' },
                     { depth: 1, color: 'var(--color-summary-d1)', text: 'Arc distillation: outcomes, what evolved, current state' },
@@ -687,7 +685,7 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
               )}
               {globalIdx === 12 && (
                 <>
-                  <div className="flex flex-col gap-2" style={{ marginTop: '4px' }}>
+                  <div className="mt-0.5 md:mt-1 flex flex-col gap-1.5 md:gap-2">
                     {[
                       { depth: 0, color: 'var(--color-summary)',    range: 'minutes' },
                       { depth: 1, color: 'var(--color-summary-d1)', range: 'hours'   },
@@ -705,7 +703,7 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
                       </div>
                     ))}
                   </div>
-                  <p style={{ color: 'var(--color-muted)', lineHeight: '1.7', fontSize: '0.875rem', margin: 0 }}>
+                  <p style={{ color: 'var(--color-muted)', fontSize: '0.875rem', margin: 0 }} className="leading-[1.6] md:leading-[1.7]">
                     {s.epilogue}
                   </p>
                 </>
@@ -718,8 +716,8 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
       {/* Section 20 — Conclusion with resource links */}
       <div
         ref={(el) => { narrationRefs.current[20] = el; }}
-        className="flex items-center"
-        style={{ minHeight: 'var(--scene-first-height)', padding: `0 var(--scene-side-padding)` }}
+        className="flex items-start md:items-center"
+        style={{ minHeight: 'var(--scene-first-height)', padding: 'var(--scene-block-pad-y) var(--scene-side-padding)' }}
       >
         <div className="flex flex-col gap-6" style={{ maxWidth: 420 }}>
           {/* Badge */}

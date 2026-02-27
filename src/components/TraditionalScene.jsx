@@ -122,11 +122,13 @@ export default function TraditionalScene({ onStateChange, onActivate, panelRef }
 
   // ── ScrollTriggers ──────────────────────────────────────────────────────────
   useEffect(() => {
+    const isMobile = window.matchMedia('(max-width: 767px)').matches;
+    const start = isMobile ? 'top 58%' : 'top 38%';
     const triggers = narrationRefs.current.map((el, i) => {
       if (!el) return null;
       return ScrollTrigger.create({
         trigger:     el,
-        start:       'top 38%',
+        start,
         end:         'bottom 38%',
         onEnter:     () => { onActivate?.(); applyStep(i); },
         onEnterBack: () => { onActivate?.(); applyStep(i); },
@@ -142,12 +144,12 @@ export default function TraditionalScene({ onStateChange, onActivate, panelRef }
         <div
           key={i}
           ref={(el) => { narrationRefs.current[i] = el; }}
-          className={`flex ${i === 0 ? 'items-start' : 'items-center'}`}
+          className="flex items-start md:items-center"
           style={{
             minHeight: i === 0 ? 'var(--scene-first-height)' : 'var(--scene-step-height)',
             padding: i === 0
-              ? 'var(--scene-first-top-padding) var(--scene-side-padding) 0'
-              : `0 var(--scene-side-padding)`,
+              ? 'var(--scene-first-top-padding) var(--scene-side-padding) var(--scene-block-pad-y)'
+              : 'var(--scene-block-pad-y) var(--scene-side-padding)',
           }}
         >
           <div className="flex flex-col gap-4">

@@ -289,7 +289,7 @@ const SharedPanel = forwardRef(function SharedPanel({
       {/* ── Context window (persistent across both modes) ─────────────────── */}
       <div style={{
         flexShrink: 0,
-        flex: ctxCollapsed ? '0 0 auto' : '1 1 auto',
+        flex: ctxCollapsed ? '0 0 auto' : (isMobile ? '0 1 auto' : '1 1 auto'),
         maxHeight: ctxCollapsed ? 0 : 'var(--shared-context-max-height)',
         minHeight: 0,
         overflow: 'hidden',
