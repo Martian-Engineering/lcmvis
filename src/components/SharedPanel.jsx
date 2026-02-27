@@ -7,7 +7,7 @@
  * both TraditionalScene and CompactionScene can trigger collapse animations
  * on items rendered inside this panel.
  */
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import gsap from 'gsap';
 import MessagePill from './MessagePill';
 import SummaryPill from './SummaryPill';
@@ -16,6 +16,21 @@ import TokenBudget from './TokenBudget';
 import DagPanel from './DagPanel';
 import ToolPanel from './ToolPanel';
 import { TOTAL_BUDGET, FRESH_TAIL_COUNT } from '../data/conversation';
+
+
+// ── Mobile detection ────────────────────────────────────────────────────────
+function useIsMobile(breakpoint = 767) {
+  const [mobile, setMobile] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth <= breakpoint
+  );
+  useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${breakpoint}px)`);
+    const handler = (e) => setMobile(e.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, [breakpoint]);
+  return mobile;
+}
 
 // ── Traditional-mode constants ──────────────────────────────────────────────
 const TRAD_BUDGET    = 2000;
@@ -142,6 +157,7 @@ const SharedPanel = forwardRef(function SharedPanel({
   // ── Derived state ───────────────────────────────────────────────────────────
   const isTraditional = mode === 'traditional';
   const isLcm         = mode === 'lcm';
+  const isMobile      = useIsMobile();
 
   const tradStep         = tradState?.step ?? 0;
   const tradItems        = tradState?.items ?? [];
@@ -397,7 +413,7 @@ const SharedPanel = forwardRef(function SharedPanel({
         flexShrink: 0,
         height: isLcm && lcmSummaries.length > 0
           ? (lcmToolView
-              ? 'var(--shared-dag-height-with-tool)'
+              ? (isMobile ? 0 : 'var(--shared-dag-height-with-tool)')
               : lcmSectionCActive
                 ? 'var(--shared-dag-height-focus)'
                 : 'var(--shared-dag-height)')
@@ -416,7 +432,7 @@ const SharedPanel = forwardRef(function SharedPanel({
       {/* ── Tool panel (LCM only — slides in for tool demo steps) ─────────── */}
       <div style={{
         flexShrink: 0,
-        height: isLcm && lcmToolView ? 'var(--shared-tool-height)' : 0,
+        height: isLcm && lcmToolView ? (isMobile ? '70%' : 'var(--shared-tool-height)') : 0,
         overflow: 'hidden',
         transition: 'height 0.55s cubic-bezier(0.16, 1, 0.3, 1)',
       }}>
