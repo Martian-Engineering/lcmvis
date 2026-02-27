@@ -92,7 +92,7 @@ const STEPS = [
   // ── (D1 scrub section removed) ──
   /* 11 */ {
     title: 'Depth-Aware Prompts',
-    body: 'As the conversation grows, LCM builds a three-level summary tree. Each depth runs a different prompt. Leaf summaries capture specifics: decisions, rationale, exact technical details. Depth-1 distills the arc: what evolved, outcomes, current state. Depth-2 produces a durable narrative — decisions still in effect and a milestone timeline — the kind of context that stays useful for weeks.',
+    body: 'As the conversation grows, LCM builds a three-level summary tree. Each depth runs a different prompt. Depth-0 summaries capture specifics: decisions, rationale, exact technical details. Depth-1 distills the arc: what evolved, outcomes, current state. Depth-2 produces a durable narrative — decisions still in effect and a milestone timeline — the kind of context that stays useful for weeks.',
   },
   /* 12 */ {
     title: 'A Bounded, Lossless Context',
@@ -109,7 +109,7 @@ const STEPS = [
   },
   /* 15 */ {
     title: 'Tool: lcm_grep',
-    body: 'lcm_grep searches every node in the DAG — raw messages and summaries alike, across all depths. Results come back with depth labels that tell the agent where in the hierarchy a topic lives — whether it\'s still in raw messages, compressed into a leaf summary, or distilled all the way up to the D2 narrative.',
+    body: 'lcm_grep searches every node in the DAG — raw messages and summaries alike, across all depths. Results come back with depth labels that tell the agent where in the hierarchy a topic lives — whether it\'s still in raw messages, compressed into a D0 summary, or distilled all the way up to the D2 narrative.',
   },
   /* 16 */ {
     title: 'Tool: lcm_expand_query',
@@ -121,7 +121,7 @@ const STEPS = [
   },
   /* 18 */ {
     title: 'Walking the DAG',
-    body: 'The sub-agent calls lcm_describe on the D2 node to read the manifest, identifies sum_d1_01 as the best match, then expands only the relevant leaf summary. It explores a 20k-token subtree but consumes under 800 tokens by being strategic.',
+    body: 'The sub-agent calls lcm_describe on the D2 node to read the manifest, identifies sum_d1_01 as the best match, then expands only the relevant D0 summary. It explores a 20k-token subtree but consumes under 800 tokens by being strategic.',
   },
   /* 19 */ {
     title: 'Focused Answer',
@@ -626,7 +626,7 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
                   </span>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                     {[
-                      'Input: leaf summaries, not raw messages.',
+                      'Input: D0 summaries, not raw messages.',
                       'Preserve decisions, outcomes, blockers, in-progress state.',
                       'Drop: transient states, dead ends, process scaffolding.',
                       'Include a timeline with timestamps for key events.',
@@ -670,7 +670,7 @@ export default function CompactionScene({ onStateChange, onActivate, panelRef })
                   {[
                     { depth: 2, color: 'var(--color-summary-d2)', text: 'Durable narrative: decisions in effect, completed work, milestone timeline' },
                     { depth: 1, color: 'var(--color-summary-d1)', text: 'Arc distillation: outcomes, what evolved, current state' },
-                    { depth: 0, color: 'var(--color-summary)',    text: 'Leaf summary: exact decisions, rationale, technical details' },
+                    { depth: 0, color: 'var(--color-summary)',    text: 'D0 summary: exact decisions, rationale, technical details' },
                   ].map(({ depth, color, text }) => (
                     <div key={depth} style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
                       <span style={{ color, fontFamily: 'monospace', fontSize: '11px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
