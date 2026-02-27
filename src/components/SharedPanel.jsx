@@ -104,6 +104,7 @@ const SharedPanel = forwardRef(function SharedPanel({
   const collapseAnimRef   = useRef(null);
   const prevItemIdsRef    = useRef(new Set());
   const suppressStaggerRef = useRef(false);
+  const scrollToTopNextRef = useRef(false);
 
   useEffect(() => { modeRef.current = mode; }, [mode]);
 
@@ -152,10 +153,9 @@ const SharedPanel = forwardRef(function SharedPanel({
 
       collapseAnimRef.current = tl;
     },
-    /** Scroll the context window items list to the top. */
+    /** On next items change, scroll to top instead of bottom. */
     scrollToTop() {
-      const el = scrollRef.current;
-      if (el) el.scrollTo({ top: 0, behavior: 'smooth' });
+      scrollToTopNextRef.current = true;
     },
   }));
 
@@ -234,11 +234,16 @@ const SharedPanel = forwardRef(function SharedPanel({
     return () => cancelAnimationFrame(frame);
   }, [isTraditional, tradItems, tradShowSummary, lcmItems]);
 
-  // ── Auto-scroll to bottom when items change ─────────────────────────────────
+  // ── Auto-scroll when items change (top after compaction, bottom otherwise) ──
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    if (scrollToTopNextRef.current) {
+      scrollToTopNextRef.current = false;
+      el.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    }
   }, [tradItems, tradShowSummary, lcmItems]);
 
   // ── Render ──────────────────────────────────────────────────────────────────
