@@ -6,7 +6,7 @@ import { forwardRef } from 'react';
 
 const Narration = forwardRef(function Narration({ title, body, step, totalSteps }, ref) {
   return (
-    <div ref={ref} className="flex flex-col gap-4">
+    <div ref={ref} className="flex flex-col gap-3 md:gap-4">
       {/* Step indicator */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
         {Array.from({ length: totalSteps }).map((_, i) => (
@@ -32,8 +32,8 @@ const Narration = forwardRef(function Narration({ title, body, step, totalSteps 
 
       {/* Body */}
       <p
-        style={{ color: 'var(--color-muted)', lineHeight: '1.7' }}
-        className="text-sm m-0"
+        style={{ color: 'var(--color-muted)' }}
+        className="text-sm m-0 leading-[1.55] md:leading-[1.7]"
       >
         {body}
       </p>

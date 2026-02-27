@@ -15,7 +15,7 @@ import { AgentationOverlay } from './components/AgentationOverlay';
 function Hero() {
   return (
     <div
-      className="flex min-h-[72vh] flex-col items-center justify-center px-4 py-12 text-center sm:px-6 md:min-h-screen md:px-8 md:py-16"
+      className="flex min-h-[56vh] flex-col items-center justify-center px-4 py-12 text-center sm:px-6 md:min-h-screen md:px-8 md:py-16"
     >
       <p
         style={{ color: 'var(--color-summary)' }}
@@ -88,6 +88,7 @@ export default function App() {
             top: 0,
             height: 'var(--panel-sticky-height)',
             zIndex: 10,
+            overflow: 'visible',
           }}
         >
           <SharedPanel
@@ -95,6 +96,14 @@ export default function App() {
             mode={mode}
             tradState={tradState}
             lcmState={lcmState}
+          />
+          {/* Gradient fade at bottom edge — softens the panel/narration boundary on mobile */}
+          <div
+            className="pointer-events-none absolute bottom-0 left-0 right-0 translate-y-full md:hidden"
+            style={{
+              height: '2rem',
+              background: 'linear-gradient(to bottom, var(--color-bg), transparent)',
+            }}
           />
         </div>
 

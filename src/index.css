@@ -28,6 +28,7 @@
   --scene-scrub-sticky-top: 38vh;
   --scene-trad-end-spacer: 20vh;
   --scene-end-spacer: 40vh;
+  --scene-block-pad-y: 0rem;
   --shared-panel-padding: 1.25rem 2.5rem 1.25rem 1rem;
   --shared-context-max-height: 70vh;
   --shared-dag-height: 40%;
@@ -69,13 +70,14 @@ body {
   :root {
     --panel-sticky-height: 50vh;
     --scene-side-padding: 1rem;
-    --scene-step-height: 60vh;
-    --scene-first-height: 80vh;
-    --scene-first-top-padding: 1.25rem;
-    --scene-scrub-height: 170vh;
+    --scene-step-height: 0;
+    --scene-first-height: 0;
+    --scene-first-top-padding: 1rem;
+    --scene-scrub-height: 100vh;
     --scene-scrub-sticky-top: 52vh;
-    --scene-trad-end-spacer: 12vh;
-    --scene-end-spacer: 22vh;
+    --scene-trad-end-spacer: 0;
+    --scene-end-spacer: 0;
+    --scene-block-pad-y: 5vh;
     --shared-panel-padding: 0.75rem;
     --shared-context-max-height: 54vh;
     --shared-dag-height: 42%;
