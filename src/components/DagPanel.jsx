@@ -321,10 +321,10 @@ export default function DagPanel({ summaries, highlightIds = [] }) {
         <div className="flex-1 flex items-start overflow-x-auto min-h-0 pt-1">
           <svg
             viewBox={`0 0 ${svgW} ${svgH}`}
+            className="block dag-svg"
             width={svgW}
             height={svgH}
-            className="max-w-none"
-            style={{ display: 'block', overflow: 'visible' }}
+            style={{ overflow: 'visible' }}
           >
             {/* ── D2 node ──────────────────────────────────────────────── */}
             {hasD2 && d2Nodes.map((d2) => (
