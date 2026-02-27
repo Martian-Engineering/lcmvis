@@ -21,12 +21,12 @@ const MessagePill = forwardRef(function MessagePill({ message, isFresh, dim }, r
         opacity: dim ? 0.35 : 1,
         transition: 'opacity 0.3s',
       }}
-      className="flex items-start gap-2 rounded-md border px-3 py-2 text-xs leading-snug"
+      className="flex items-start gap-1.5 md:gap-2 rounded-md border px-2 md:px-3 py-1.5 md:py-2 text-xs leading-snug"
     >
       {/* Role badge */}
       <span
         style={{ color: border, borderColor: border }}
-        className="mt-0.5 shrink-0 rounded border px-1 py-0.5 text-[10px] font-bold tracking-widest"
+        className="mt-px md:mt-0.5 shrink-0 rounded border px-1 py-px md:py-0.5 text-[9px] md:text-[10px] font-bold tracking-widest"
       >
         {label}
       </span>
@@ -41,8 +41,8 @@ const MessagePill = forwardRef(function MessagePill({ message, isFresh, dim }, r
             {message.tokens.toLocaleString()} tok
           </span>
         </div>
-        {/* Content snippet */}
-        <p style={{ color: 'var(--color-text)' }} className="m-0 truncate">
+        {/* Content snippet — hidden on mobile for compactness */}
+        <p style={{ color: 'var(--color-text)' }} className="m-0 truncate hidden md:block">
           {message.snippet}
         </p>
       </div>
@@ -51,7 +51,7 @@ const MessagePill = forwardRef(function MessagePill({ message, isFresh, dim }, r
       {isFresh && (
         <span
           style={{ color: 'var(--color-fresh)', borderColor: 'var(--color-fresh)' }}
-          className="mt-0.5 shrink-0 rounded border px-1 py-0.5 text-[9px] font-semibold"
+          className="mt-px md:mt-0.5 shrink-0 rounded border px-1 py-px md:py-0.5 text-[8px] md:text-[9px] font-semibold"
         >
           FRESH TAIL
         </span>

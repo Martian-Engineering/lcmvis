@@ -21,10 +21,10 @@ const SummaryPill = forwardRef(function SummaryPill({ summary }, ref) {
     <div
       ref={ref}
       style={{ borderColor: color, background: bg }}
-      className="rounded-md border px-3 py-2 text-xs leading-snug"
+      className="rounded-md border px-2 md:px-3 py-1.5 md:py-2 text-xs leading-snug"
     >
       {/* Header row */}
-      <div className="flex items-center justify-between gap-2 mb-1">
+      <div className="flex items-center justify-between gap-2 mb-0.5 md:mb-1">
         <div className="flex items-center gap-2">
           <span
             style={{ color, borderColor: color }}
@@ -42,7 +42,7 @@ const SummaryPill = forwardRef(function SummaryPill({ summary }, ref) {
       </div>
 
       {/* Time range + descendant count */}
-      <div className="flex items-center gap-3 mb-1.5">
+      <div className="flex items-center gap-2 md:gap-3 mb-1 md:mb-1.5">
         <span style={{ color: 'var(--color-muted)' }} className="text-[10px]">
           {summary.timeRange}
         </span>
@@ -52,7 +52,7 @@ const SummaryPill = forwardRef(function SummaryPill({ summary }, ref) {
       </div>
 
       {/* Content */}
-      <p style={{ color: 'var(--color-text)' }} className="m-0 text-[11px] leading-relaxed line-clamp-2">
+      <p style={{ color: 'var(--color-text)' }} className="m-0 text-[11px] leading-relaxed line-clamp-2 hidden md:block">
         {summary.snippet}
       </p>
     </div>

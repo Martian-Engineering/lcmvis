@@ -63,9 +63,8 @@ body {
 
 @media (max-width: 767px) {
   .dag-svg {
-    width: 100% !important;
-    height: auto !important;
     max-width: 100%;
+    height: auto !important;
   }
   :root {
     --panel-sticky-height: 50vh;
@@ -74,13 +73,13 @@ body {
     --scene-first-height: 80vh;
     --scene-first-top-padding: 1.25rem;
     --scene-scrub-height: 170vh;
-    --scene-scrub-sticky-top: 22vh;
+    --scene-scrub-sticky-top: 52vh;
     --scene-trad-end-spacer: 12vh;
     --scene-end-spacer: 22vh;
     --shared-panel-padding: 0.75rem;
-    --shared-context-max-height: 48vh;
-    --shared-dag-height: 52%;
-    --shared-dag-height-with-tool: 56%;
+    --shared-context-max-height: 54vh;
+    --shared-dag-height: 42%;
+    --shared-dag-height-with-tool: 48%;
     --shared-dag-height-focus: 84%;
     --shared-tool-height: 40%;
   }

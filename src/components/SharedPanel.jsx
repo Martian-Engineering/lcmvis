@@ -272,7 +272,7 @@ const SharedPanel = forwardRef(function SharedPanel({
       }}>
         <div
           style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-          className="flex h-full flex-col gap-3 rounded-xl p-3 md:p-4"
+          className="flex h-full flex-col gap-2 md:gap-3 rounded-xl p-2.5 md:p-4"
         >
           {/* Header — badge cross-fades between modes */}
           <div className="flex items-center justify-between shrink-0">

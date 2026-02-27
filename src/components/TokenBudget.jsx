@@ -27,7 +27,7 @@ const TokenBudget = forwardRef(function TokenBudget({ used, total, label, thresh
       {/* Track */}
       <div
         style={{ background: 'var(--color-border)' }}
-        className="h-2 w-full rounded-full overflow-hidden"
+        className="h-1.5 md:h-2 w-full rounded-full overflow-hidden"
       >
         {/* Fill */}
         <div
